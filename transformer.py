@@ -18,17 +18,24 @@ class Transformer:
             width, height = image.size
             side_length = min(width, height)
 
-            # Calculate the coordinates for a centered crop
-            left = (width - side_length) / 2
-            top = (height - side_length) / 2
-            right = (width + side_length) / 2
-            bottom = (height + side_length) / 2
+            # centered crop by default
+            left = 1 - side_length / (2 * width)
+            top = 1 - side_length / (2 * height)
+            right = 1 - left
+            bottom = 1 - top
 
-            # Override defaults if provided
+            # override defaults if provided
+            # the arguments provided are taken as percentages (fractions)
+
             left = kwargs.get('left', left)
             top = kwargs.get('top', top)
             right = kwargs.get('right', right)
             bottom = kwargs.get('bottom', bottom)
+
+            left = round(left*width)
+            top = round(top*height)
+            right = round(right*width)
+            bottom = round(bottom*height)
 
             return image.crop((left, top, right, bottom))
         
