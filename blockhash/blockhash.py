@@ -10,6 +10,7 @@ import math
 import argparse
 import PIL.Image as Image
 import numpy as np
+from tqdm import tqdm
 
 def median(data):
     data = sorted(data)
@@ -92,7 +93,7 @@ def blockhash_even(im, bits):
 def blockhash(ims, bits=128, size=224, *args, **kwargs):
     bits = round(bits**0.5)
     bits_list = []
-    for i, im in enumerate(ims):  
+    for i, im in tqdm(enumerate(ims)):  
         method = kwargs.get("method", Image.LANCZOS)
         im = im.resize((size, size), method)
         if im.mode == "RGBA":
@@ -169,7 +170,7 @@ def blockhash(ims, bits=128, size=224, *args, **kwargs):
         result = [blocks[row][col] for row in range(bits) for col in range(bits)]
 
         translate_blocks_to_bits(result, block_width * block_height)
-        bits_list.append("".join(map(str, result)))  # bits_to_hexhash(result)
+        bits_list.append(np.array(result, dtype=bool))  # bits_to_hexhash(result)
     return bits_list
 
 

@@ -14,6 +14,6 @@ def phash(images, bits=100, highfreq_factor=4):
         dctlowfreq = dct[:hash_size, 1:hash_size+1]
         avg = dctlowfreq.mean()
         diff = (dctlowfreq > avg).flatten()
-        hashes.append("".join(map(str,diff.astype(int))))
+        hashes.append(diff)
 	
     return hashes

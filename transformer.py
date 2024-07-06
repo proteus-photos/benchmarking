@@ -16,40 +16,26 @@ class Transformer:
 
         elif method == 'crop':
             width, height = image.size
-            side_length = min(width, height)
 
             # centered crop by default
-            left = 1 - side_length / (2 * width)
-            top = 1 - side_length / (2 * height)
-            right = 1 - left
-            bottom = 1 - top
+            left = 0.1
+            top = 0.1
+            right = 0.9
+            bottom = 0.9
 
             # override defaults if provided
             # the arguments provided are taken as percentages (fractions)
 
-            left = kwargs.get('left', left)
-            top = kwargs.get('top', top)
-            right = kwargs.get('right', right)
-            bottom = kwargs.get('bottom', bottom)
+            left = kwargs.get('left', left) * width
+            top = kwargs.get('top', top)    * height
+            right = kwargs.get('right', right)   * width
+            bottom = kwargs.get('bottom', bottom)* height
 
-            left = round(left*width)
-            top = round(top*height)
-            right = round(right*width)
-            bottom = round(bottom*height)
 
             return image.crop((left, top, right, bottom))
         
         elif method=="screenshot":
-            width, height = image.size
-            left = width * 0.1
-            top = height * 0.1
-            right = width * 0.9
-            bottom = height * 0.9
-
-            cropped_image = image.crop((left, top, right, bottom))
-
-
-            return self.transform(cropped_image, 'jpeg')
+            return self.transform(self.transform(image, "crop"), 'jpeg')
         elif method == "double screenshot":
             return self.transform(self.transform(image, "screenshot"), "screenshot")
         else:

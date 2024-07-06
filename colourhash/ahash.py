@@ -10,5 +10,5 @@ def ahash(images, bits=100):
         avg = pixels.mean()
         diff = (pixels > avg).flatten()
         # make a hash
-        hashes.append("".join(map(str, diff)))
+        hashes.append(diff)
     return hashes

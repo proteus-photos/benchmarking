@@ -34,6 +34,6 @@ def whash(images, bits=64, image_scale = None, mode = 'haar', remove_max_haar_ll
 
         # Substract median and compute hash
         med = np.median(dwt_low)
-        diff = (dwt_low > med).astype(int)
-        hashes.append("".join(map(str, diff.flatten())))
+        diff = dwt_low > med
+        hashes.append(diff)
     return hashes
