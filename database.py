@@ -3,17 +3,15 @@ import numpy as np
 class Database:
     def __init__(self, hashes=None, storedir=None, metadata=None, refresh=True):
         self.metadata = metadata
-
+        
         if hashes is None:
             if storedir is None:
                 raise ValueError
             else:
                 self.hashes = np.load(storedir+".npy")
         else:
-            if storedir is None:
-                self.hashes = hashes
-            else:
-                self.hashes = hashes
+            self.hashes = np.array(hashes)
+            if storedir is not None:
                 np.save(storedir, hashes)
 
     def query(self, hash, k=1):

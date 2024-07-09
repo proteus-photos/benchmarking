@@ -1,5 +1,5 @@
 from scipy.optimize import minimize, fmin_cobyla
-from neuralhash.neuralhash import neuralhash
+from hashes.neuralhash import neuralhash
 from PIL import Image
 from transformer import Transformer
 from utils import match

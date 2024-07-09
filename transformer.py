@@ -17,7 +17,7 @@ class Transformer:
         elif method == 'crop':
             width, height = image.size
 
-            # centered crop by default
+            # 10% crop by default
             left = 0.1
             top = 0.1
             right = 0.9
