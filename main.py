@@ -16,8 +16,8 @@ from hashes.ahash import ahash
 from hashes.phash import phash
 from hashes.whash import whash
 
-transformations = ['screenshot', 'double screenshot'] #, 'jpeg', 'crop']
-hash_methods = [phash, blockhash, whash, dhash, neuralhash]
+transformations = ['screenshot'] #, 'double screenshot', 'jpeg', 'crop']
+hash_methods = [phash, neuralhash] #, blockhash, whash, dhash
 
 dataset_folder = './dataset/imagenet/images'
 image_files = [f for f in os.listdir(dataset_folder)]

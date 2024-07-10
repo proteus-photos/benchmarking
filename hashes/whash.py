@@ -2,7 +2,7 @@ import numpy as np
 import pywt
 from PIL import Image
 
-def whash(images, bits=100, image_scale = None, mode = 'haar', remove_max_haar_ll = True):
+def whash(images, bits=64, image_scale = None, mode = 'haar', remove_max_haar_ll = True):
     hash_size = round(bits**0.5)
     hashes = []
     for image in images:

@@ -93,7 +93,7 @@ def blockhash_even(im, bits):
 def blockhash(ims, bits=128, size=224, *args, **kwargs):
     bits = round(bits**0.5)
     bits_list = []
-    for i, im in tqdm(enumerate(ims)):  
+    for i, im in enumerate(ims):  
         method = kwargs.get("method", Image.LANCZOS)
         im = im.resize((size, size), method)
         if im.mode == "RGBA":
