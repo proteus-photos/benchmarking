@@ -6,7 +6,7 @@ class Transformer:
         pass
     def transform(self, image, method, **kwargs):
         if method == 'jpeg':
-            quality = kwargs.get('quality', 100)
+            quality = kwargs.get('quality', 95)
 
             img_byte_arr = io.BytesIO()
             image.save(img_byte_arr, format='JPEG', quality=quality)
