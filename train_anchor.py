@@ -29,12 +29,12 @@ COMPRESS = 4
 
 RED = 0
 GREEN = 1
-BLUE = 1
+BLUE = 2
 
 X = 0
 Y = 1
 
-BATCH_SIZE = 128
+BATCH_SIZE = 256
 
 def original_coordinates(outs, states):
     xs, ys = outs[:, X], outs[:, Y]
@@ -44,29 +44,44 @@ def original_coordinates(outs, states):
 
     return x1s, y1s
 
+# for 0.3 each side, baseline is 0.01
 def box_loss(out1s, state1s, out2s, state2s):
     x1s, y1s = original_coordinates(out1s, state1s)
     x2s, y2s = original_coordinates(out2s, state2s)
 
-    return (torch.square(x1s-x2s).sum() + torch.square(y1s-y2s).sum()) / len(out1s)
+    return torch.square(x1s-x2s).mean() + torch.square(y1s-y2s).mean()
+
+# for 0.3 each side, baseline is 0.03
+def weighted_box_loss(out1s, state1s, out2s, state2s):
+    # Divides box loss by IOU of the two crops
+    x1s, y1s = original_coordinates(out1s, state1s)
+    x2s, y2s = original_coordinates(out2s, state2s)
+
+    losses = torch.square(x1s-x2s) + torch.square(y1s-y2s)
+    left, _ = torch.max(torch.stack((state1s[:, LEFT], state2s[:, LEFT])), dim=0)
+    top, _ = torch.max(torch.stack((state1s[:, TOP], state2s[:, TOP])), dim=0)
+    right, _ = torch.min(torch.stack((state1s[:, RIGHT], state2s[:, RIGHT])), dim=0)
+    bottom, _ = torch.min(torch.stack((state1s[:, BOTTOM], state2s[:, BOTTOM])), dim=0)
+
+    ious = (right - left) * (bottom - top)   
+    return (losses * ious).mean()
 
 class CustomDataset(Dataset):
     def __init__(self, image_directory, transform=None):
-        self.image_paths = [os.path.join(image_directory, x) for x in os.listdir(image_directory)][:20]
+        self.image_paths = [os.path.join(image_directory, x) for x in os.listdir(image_directory)]
         self.transform = transform
 
     def __len__(self):
         return len(self.image_paths)
 
-    def get_random_transform(self):
-        MAX_CROP = 0.2
+    def get_random_transform(self, max_crop=0.3):
 
-        compress = False # bool(torch.bernoulli(torch.Tensor([0.3])).item())  # 30% chance of compressing
+        compress = bool(torch.bernoulli(torch.Tensor([0.5])).item())  # 30% chance of compressing
 
-        left = rand_uniform(0, MAX_CROP)
-        top = rand_uniform(0, MAX_CROP)
-        right = 1 - rand_uniform(0, MAX_CROP)
-        bottom = 1 - rand_uniform(0, MAX_CROP)
+        left = rand_uniform(0, max_crop)
+        top = rand_uniform(0, max_crop)
+        right = 1 - rand_uniform(0, max_crop)
+        bottom = 1 - rand_uniform(0, max_crop)
 
         return (left, top, right, bottom, compress)
 
@@ -88,7 +103,7 @@ class CustomDataset(Dataset):
         return self.transform(image), image1, state1, image2, state2
 
 if __name__ == "__main__":
-    model = mobilenet_v3_large(weights=MobileNet_V3_Large_Weights)
+    model = mobilenet_v3_large(weights=MobileNet_V3_Large_Weights.DEFAULT)
 
     model.classifier = nn.Sequential(
         nn.Linear(model.classifier[0].in_features, 1280),
@@ -102,21 +117,22 @@ if __name__ == "__main__":
     last_blocks_params = []
 
     for name, param in model.named_parameters():
-        print(param.shape, name)
         # param.requires_grad = True
 
         if "classifier" in name:
             classifier_params.append(param)
             param.requires_grad = True
-        # elif "features.16" in name or "features.15" in name or "features.14" in name:
-        #     last_blocks_params.append(param)
-        #     param.requires_grad = True
+            print(param.shape, name)
+        elif any("features."+str(x) in name for x in range(9, 17)):
+            last_blocks_params.append(param)
+            param.requires_grad = True
+            print(param.shape, name)
         else:
             param.requires_grad = False
 
     optimizer = torch.optim.Adam([
-        {'params': classifier_params, 'lr': 1e-6},
-    #     {'params': last_blocks_params, 'lr': 1e-6},
+        {'params': classifier_params, 'lr': 1e-3},
+        {'params': last_blocks_params, 'lr': 1e-5},
     ])
 
     transform = transforms.Compose([
@@ -133,7 +149,7 @@ if __name__ == "__main__":
 
     dataset = CustomDataset("./dataset/imagenet/images", transform=transform)
 
-    train_size = int(0.5 * len(dataset))
+    train_size = int(0.9 * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
@@ -167,33 +183,33 @@ if __name__ == "__main__":
             # plt.scatter(output2s[:, X].detach().cpu().numpy(), output2s[:, Y].detach().cpu().numpy(), alpha=0.1, color='blue', edgecolors=None)
             # plt.savefig(f"plots/{epoch+1}.png")
             # plt.close()
-
-            xs, ys = original_coordinates(output1s, state1s)
-            coordinates1 = torch.round(xs * 224).long(), torch.round(ys * 224).long()
-
-            xs, ys = original_coordinates(output2s, state2s)
-            coordinates2 = torch.round(xs * 224).long(), torch.round(ys * 224).long()
             
             # for coord1, coord2 in zip(zip(*coordinates1), zip(*coordinates2)):
             #     print(coord1[X].item(), coord1[Y].item(), coord2[X].item(), coord2[Y].item())
 
-            images = inverse_transform(images)
-            for i in range(len(images)):
-                images[i, BLUE,  coordinates1[X][i]-3:coordinates1[X][i]+3, coordinates1[Y][i]-3:coordinates1[Y][i]+3] = 1
-                images[i, GREEN, coordinates2[X][i]-3:coordinates2[X][i]+3, coordinates2[Y][i]-3:coordinates2[Y][i]+3] = 1
-
-            grid_img = torchvision.utils.make_grid(images, nrow=5)
-            plt.imshow(grid_img.permute(1, 2, 0))
-            plt.savefig(f"plots/image{epoch+1}.png")
-            plt.close()
-
-            loss = box_loss(output1s, state1s, output2s, state2s)
+            loss = weighted_box_loss(output1s, state1s, output2s, state2s)
             loss.backward()
             optimizer.step()
             
             train_loss += loss.item()
         train_loss /= len(train_loader)
 
+        images = inverse_transform(images[:10])
+        xs, ys = original_coordinates(output1s, state1s)
+        coordinates1 = torch.round(xs * 224).long(), torch.round(ys * 224).long()
+
+        xs, ys = original_coordinates(output2s, state2s)
+        coordinates2 = torch.round(xs * 224).long(), torch.round(ys * 224).long()
+        
+        for i in range(len(images)):
+            images[i, BLUE,  coordinates1[X][i]-5:coordinates1[X][i]+5, coordinates1[Y][i]-5:coordinates1[Y][i]+5] = 1
+            images[i, GREEN, coordinates2[X][i]-5:coordinates2[X][i]+5, coordinates2[Y][i]-5:coordinates2[Y][i]+5] = 1
+
+        grid_img = torchvision.utils.make_grid(images, nrow=5)
+        plt.imshow(grid_img.permute(1, 2, 0))
+        plt.savefig(f"plots/image{epoch+1}.png")
+        plt.close()
+        
         model.eval()
         val_loss = 0.0
         with torch.no_grad():
