@@ -7,7 +7,7 @@ import gc
 
 from transformer import Transformer
 from hashes.blockhash import blockhash
-from hashes.neuralhash import neuralhash
+# from hashes.neuralhash import neuralhash
 from utils import match
 from database import Database
 
@@ -17,7 +17,7 @@ from hashes.phash import phash
 from hashes.whash import whash
 
 transformations = ['screenshot'] #, 'double screenshot', 'jpeg', 'crop']
-hash_methods = [phash, neuralhash] #, blockhash, whash, dhash
+hash_methods = [phash, whash] #, blockhash, whash, dhash, neuralhash
 
 dataset_folder = './dataset/imagenet/images'
 image_files = [f for f in os.listdir(dataset_folder)]

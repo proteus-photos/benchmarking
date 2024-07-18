@@ -14,6 +14,8 @@ from transformer import Transformer
 import os
 from tqdm import tqdm
 from matplotlib import pyplot as plt
+from PIL import Image
+import numpy as np
 
 t = Transformer()
 torch.manual_seed(42)
@@ -31,6 +33,10 @@ RED = 0
 GREEN = 1
 BLUE = 2
 
+RED_COLOUR = torch.Tensor([1, 0, 0]).reshape(3, 1, 1)
+GREEN_COLOUR = torch.Tensor([0, 1, 0]).reshape(3, 1, 1)
+BLUE_COLOUR = torch.Tensor([0, 0, 1]).reshape(3, 1, 1)
+
 X = 0
 Y = 1
 
@@ -39,19 +45,19 @@ BATCH_SIZE = 256
 def original_coordinates(outs, states):
     xs, ys = outs[:, X], outs[:, Y]
 
-    x1s = states[:, LEFT] + (xs/2 + .5) * (states[:, RIGHT] - states[:, BOTTOM])
+    x1s = states[:, LEFT] + (xs/2 + .5) * (states[:, RIGHT] - states[:, LEFT])
     y1s = states[:, TOP] + (ys/2 + .5) * (states[:, BOTTOM] - states[:, TOP])
 
     return x1s, y1s
 
-# for 0.3 each side, baseline is 0.01
+# for 0.3 each side, baseline is 0.015084
 def box_loss(out1s, state1s, out2s, state2s):
     x1s, y1s = original_coordinates(out1s, state1s)
     x2s, y2s = original_coordinates(out2s, state2s)
 
     return torch.square(x1s-x2s).mean() + torch.square(y1s-y2s).mean()
 
-# for 0.3 each side, baseline is 0.03
+# for 0.3 each side, baseline is 0.007889
 def weighted_box_loss(out1s, state1s, out2s, state2s):
     # Divides box loss by IOU of the two crops
     x1s, y1s = original_coordinates(out1s, state1s)
@@ -63,7 +69,12 @@ def weighted_box_loss(out1s, state1s, out2s, state2s):
     right, _ = torch.min(torch.stack((state1s[:, RIGHT], state2s[:, RIGHT])), dim=0)
     bottom, _ = torch.min(torch.stack((state1s[:, BOTTOM], state2s[:, BOTTOM])), dim=0)
 
-    ious = (right - left) * (bottom - top)   
+    intersection = (right - left) * (bottom - top)
+    union = (state1s[:, RIGHT] - state1s[:, LEFT]) * (state1s[:, BOTTOM] - state1s[:, TOP]) + \
+            (state2s[:, RIGHT] - state2s[:, LEFT]) * (state2s[:, BOTTOM] - state2s[:, TOP]) - \
+            intersection
+    ious = intersection / union
+    
     return (losses * ious).mean()
 
 class CustomDataset(Dataset):
@@ -112,6 +123,8 @@ if __name__ == "__main__":
         nn.Linear(1280, 2),
         nn.Tanh()
     )
+
+    # model.load_state_dict(torch.load('finetuned_mobilenetv3.pth'))
 
     classifier_params = []
     last_blocks_params = []
@@ -201,14 +214,37 @@ if __name__ == "__main__":
         xs, ys = original_coordinates(output2s, state2s)
         coordinates2 = torch.round(xs * 224).long(), torch.round(ys * 224).long()
         
+        lefts1 = torch.round(state1s[:, LEFT] * 224).long()
+        tops1 = torch.round(state1s[:, TOP] * 224).long()
+        rights1 = torch.round(state1s[:, RIGHT] * 224).long()
+        bottoms1 = torch.round(state1s[:, BOTTOM] * 224).long()
+
+        lefts2 = torch.round(state2s[:, LEFT] * 224).long()
+        tops2 = torch.round(state2s[:, TOP] * 224).long()
+        rights2 = torch.round(state2s[:, RIGHT] * 224).long()
+        bottoms2 = torch.round(state2s[:, BOTTOM] * 224).long()
+
+        uint8_images = []
         for i in range(len(images)):
-            images[i, BLUE,  coordinates1[X][i]-5:coordinates1[X][i]+5, coordinates1[Y][i]-5:coordinates1[Y][i]+5] = 1
-            images[i, GREEN, coordinates2[X][i]-5:coordinates2[X][i]+5, coordinates2[Y][i]-5:coordinates2[Y][i]+5] = 1
+            # place dots
+            images[i, :,  coordinates1[X][i]-5:coordinates1[X][i]+5, coordinates1[Y][i]-5:coordinates1[Y][i]+5] = BLUE_COLOUR
+            images[i, :, coordinates2[X][i]-5:coordinates2[X][i]+5, coordinates2[Y][i]-5:coordinates2[Y][i]+5] = GREEN_COLOUR
+            
+            # create bounding boxes
+            images[i, :, lefts1[i]-2:lefts1[i]+2, tops1[i]:bottoms1[i]] = BLUE_COLOUR
+            images[i, :, rights1[i]-2:rights1[i]+2, tops1[i]:bottoms1[i]] = BLUE_COLOUR
+            images[i, :, lefts1[i]:rights1[i], tops1[i]-2:tops1[i]+2] = BLUE_COLOUR
+            images[i, :, lefts1[i]:rights1[i], bottoms1[i]-2:bottoms1[i]+2] = BLUE_COLOUR
+
+            images[i, :, lefts2[i]-2:lefts2[i]+2, tops2[i]:bottoms2[i]] = GREEN_COLOUR
+            images[i, :, rights2[i]-2:rights2[i]+2, tops2[i]:bottoms2[i]] = GREEN_COLOUR
+            images[i, :, lefts2[i]:rights2[i], tops2[i]-2:tops2[i]+2] = GREEN_COLOUR
+            images[i, :, lefts2[i]:rights2[i], bottoms2[i]-2:bottoms2[i]+2] = GREEN_COLOUR
 
         grid_img = torchvision.utils.make_grid(images, nrow=5)
-        plt.imshow(grid_img.permute(1, 2, 0))
-        plt.savefig(f"plots/image{epoch+1}.png")
-        plt.close()
+        im = Image.fromarray((grid_img.permute(1, 2, 0).numpy() * 255).astype(np.uint8))
+        im.save(f"plots/image{epoch+1}.png")
+        im.close()
         
         model.eval()
         val_loss = 0.0
