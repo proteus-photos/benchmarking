@@ -1,19 +1,31 @@
 import numpy as np
 from multiprocessing import Pool
+import os
 
 class Database:
-    def __init__(self, hashes=None, storedir=None, metadata=None, refresh=True):
-        self.metadata = metadata
-        
+    def __init__(self, hashes=None, storedir=None, metadata=None, refresh=True):        
         if hashes is None:
             if storedir is None:
                 raise ValueError
             else:
                 self.hashes = np.load(storedir+".npy")
+                if metadata is None:
+                    try:
+                        self.metadata = np.load(storedir+"_metadata.npy")
+                    except FileNotFoundError:
+                        self.metadata = None
+                else:
+                    self.metadata = np.array(metadata)
+                    np.save(storedir+"_metadata", metadata)
         else:
             self.hashes = np.array(hashes)
             if storedir is not None:
                 np.save(storedir, hashes)
+                if metadata is not None:
+                    self.metadata = np.array(metadata)
+                    np.save(storedir+"_metadata", metadata)
+                else:
+                    self.metadata = None
 
     def query(self, hash, k=1, start_index=None, end_index=None):
         if start_index is None:
