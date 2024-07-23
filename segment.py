@@ -8,10 +8,9 @@ from tqdm import tqdm
 from PIL import Image
 
 def combine(mask1, mask2):
-
     return {
             "segmentation": mask1["segmentation"] | mask2["segmentation"],
-            "area": mask1["area"] + mask2["area"],
+            "area": mask1["area"] + mask2["area"] - (mask1["segmentation"] & mask2["segmentation"]).sum(),
             "bbox": [
                 min(mask1["bbox"][0], mask2["bbox"][0]),
                 min(mask1["bbox"][1], mask2["bbox"][1]),
@@ -32,6 +31,16 @@ def combine(mask1, mask2):
             ]
         }
 
+def box_mask_intersection(maskA, maskB):
+    mask = maskA["segmentation"]
+    box = maskB["bbox"]
+
+    # check borders for segmentation intersection
+    return any(np.any(mask[box[0], box[1]:box[1]+box[3]]),
+               np.any(mask[box[1], box[0]:box[0]+box[2]]),
+               np.any(mask[box[0]+box[2], box[1]:box[1]+box[3]]),
+               np.any(mask[box[1]+box[3], box[0]:box[0]+box[2]]))
+
 def intersection_over_smaller(boxA, boxB):
     # xA = max(boxA["bbox"][0], boxB["bbox"][0])
     # yA = max(boxA["bbox"][1], boxB["bbox"][1])
@@ -49,8 +58,7 @@ def intersection_over_smaller(boxA, boxB):
     return interArea / min(boxAArea, boxBArea)
 
 def supress_subsets(masks, n_final_masks=4):
-    # combines masks based on high ios scores until there are n_final_masks left
-    # returns a list of masks
+    # combines masks based on high ios scores until either there are n_final_masks left or all masks are non-intersecting
     while len(masks) > n_final_masks:
 
         # NOTE: Diagonal will be zero (even though technicall it should be 1)
@@ -62,12 +70,19 @@ def supress_subsets(masks, n_final_masks=4):
                 ios = intersection_over_smaller(masks[i], masks[j])
                 ios_matrix[i, j] = ios
                 ios_matrix[j, i] = ios
-                
         mask1_index, mask2_index = np.unravel_index(np.argmax(ios_matrix, axis=None), ios_matrix.shape)
+
+        # if there is only slight overlap, break
+        # REMEMBER IF YOU REMOVE THIS YOU STILL NEED TO KEEP == 0 CONDITION else it will try to combine first mask with itself
+        if ios_matrix[mask1_index, mask2_index] < 0.1:
+            break
+
         # dict_keys(['segmentation', 'area', 'bbox', 'predicted_iou', 'point_coords', 'stability_score', 'crop_box'])
 
         # combine the two dictionaries based on weighted average of area store in mask1_index, delete mask2_index
+
         masks[mask1_index] = combine(masks[mask1_index], masks[mask2_index])
+
         ios_matrix[mask1_index] = [intersection_over_smaller(masks[mask1_index], masks[i]) if mask1_index!=i else 0 for i in range(len(masks))]
         ios_matrix[:, mask1_index] = ios_matrix[mask1_index]
 
@@ -76,6 +91,25 @@ def supress_subsets(masks, n_final_masks=4):
 
     return masks
 
+def suppress_small_masks(masks, area=600):
+    # if takes all chhota masks, sees its border's interesection with bigger masks and combines if match
+    masks.sort(key=lambda x: x["area"])
+    i = 0
+    while True:
+        mask = masks[i]
+        if mask["area"] > area:
+            break
+        j = i+1
+        while j < len(masks):
+            # check intersection of mask with all bigger masks
+            if box_mask_intersection(mask, masks[j]):
+                masks[j] = combine(mask, masks[j])
+                masks.pop(i)
+                i-=1
+                break
+            j+=1
+        i+=1
+        
 model_type = "vit_t"
 sam_checkpoint = "./weights/mobile_sam.pt"
 
@@ -118,9 +152,7 @@ if __name__ == "__main__":
         images.append(image)
 
     for i, image in tqdm(enumerate(images)):
-        masks = s.segment(image)
-        print(len(masks), [mask['area'] for mask in masks])
-        
+        masks = s.segment(image)        
         if len(masks) == 0:
             continue
         sorted_anns = sorted(masks, key=(lambda x: x['area']), reverse=True)

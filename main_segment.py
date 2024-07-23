@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 from tqdm import tqdm
 import gc
 from collections import defaultdict
+import argparse
 
 from transformer import Transformer
 from hashes.blockhash import blockhash
@@ -36,6 +37,11 @@ def extract_hashes(image):
     
     return hashed_bokehs, segments
 
+parser = argparse.ArgumentParser(description ='Perform retrieval benchmarking based on segmenting.')
+parser.add_argument('-r', '--refresh', action='store_true')
+
+args = parser.parse_args()
+
 #TODO: Implement np.packbits to reduce size of storage by 8x. Also test XOR on uint8 storage to see if speedup
 BLUR_RADIUS = 20  # for 360x360
 N_SEGMENT_RETRIEVAL = 10
@@ -55,7 +61,7 @@ s = Segmenter()
 os.makedirs("databases", exist_ok=True)
 databases = []
 
-if hash_method.__name__ + "_segmented.npy" not in os.listdir("databases"):
+if hash_method.__name__ + "_segmented.npy" not in os.listdir("databases") or args.refresh:
     print("Creating database for", hash_method.__name__)
     mask_hashes = []
     image_numbers = []
