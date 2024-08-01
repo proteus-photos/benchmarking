@@ -10,7 +10,7 @@ import argparse
 from transformer import Transformer
 from hashes.blockhash import blockhash
 from hashes.neuralhash import neuralhash
-from utils import match, create_bokehs, bbox_to_ltrb
+from utils import match, create_bokehs, bbox_to_ltrb, clip_to_image
 from database import Database
 from segment import Segmenter
 
@@ -22,19 +22,28 @@ from hashes.whash import whash
 def extract_hashes(image):
     hashed_bokehs = []
 
-    blurred_image = image.filter(ImageFilter.GaussianBlur(radius=BLUR_RADIUS))
+    blurred_image = image.filter(ImageFilter.GaussianBlur(radius=BLUR_RADIUS)) # for bokeh
 
-    segments = s.segment(image)
+    segments = s.segment(image.filter(ImageFilter.GaussianBlur(radius=SLIGHT_BLUR_RADIUS))) # to remove edge detail
+
+    for j, ann in enumerate(segments):
+        segmented_img = np.array(image)
+        m = ann['segmentation']
+        segmented_img[m] = np.array([0, 0, 255])
+        save_img = Image.fromarray(segmented_img)
+        save_img.save(f"segmentations_test/{j}.png")
+
     bokehs = create_bokehs(image, blurred_image, [segment["segmentation"] for segment in segments])
     print(len(segments))
     for segment_index in range(len(segments)):
-        left, top, right, bottom = bbox_to_ltrb(segments[segment_index]["bbox"])
+        left, top, right, bottom = bbox_to_ltrb(clip_to_image(segments[segment_index]["bbox"], *image.size))
+        print(left, top, right, bottom)
         cropped_bokeh = bokehs[segment_index][top:bottom, left:right]
         cropped_bokeh = Image.fromarray(cropped_bokeh)
 
         hashed_bokeh = neuralhash([cropped_bokeh], array=True)[0]
         hashed_bokehs.append(hashed_bokeh)
-    
+
     return hashed_bokehs, segments
 
 parser = argparse.ArgumentParser(description ='Perform retrieval benchmarking based on segmenting.')
@@ -44,10 +53,11 @@ args = parser.parse_args()
 
 #TODO: Implement np.packbits to reduce size of storage by 8x. Also test XOR on uint8 storage to see if speedup
 BLUR_RADIUS = 20  # for 360x360
+SLIGHT_BLUR_RADIUS = 2
 N_SEGMENT_RETRIEVAL = 10
 N_IMAGE_RETRIEVAL = 5
 
-open_image = lambda x: Image.open(x).convert("RGB").resize((360,360))
+open_image = lambda x: Image.open(x).convert("RGB")
 
 transformations = ['screenshot', 'crop', 'double screenshot'] #, 'jpeg']
 hash_method = neuralhash
@@ -61,7 +71,7 @@ s = Segmenter()
 os.makedirs("databases", exist_ok=True)
 databases = []
 
-if hash_method.__name__ + "_segmented.npy" not in os.listdir("databases") or args.refresh:
+if hash_method.__name__ + ".npy" not in os.listdir("segmented_databases") or args.refresh:
     print("Creating database for", hash_method.__name__)
     mask_hashes = []
     image_numbers = []

@@ -16,7 +16,7 @@ session = onnxruntime.InferenceSession("./hashes/model.onnx")
 # sess_opts.inter_op_num_threads = 24
 # sess_opts.intra_op_num_threads = 24
 
-def neuralhash(ims, bits=128, array=False, *args, **kwargs):
+def neuralhash(ims, bits=128, *args, **kwargs):
     # Load output hash matrix
     
     hash_bits_list = []

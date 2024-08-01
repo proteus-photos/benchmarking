@@ -6,50 +6,65 @@ import numpy as np
 import os
 from tqdm import tqdm
 from PIL import Image
+from utils import clip_to_image
+import shutil
+
+X = 0
+Y = 1
+W = 2
+H = 3
 
 def combine(mask1, mask2):
+    x = min(mask1["bbox"][X], mask2["bbox"][X])
+    y = min(mask1["bbox"][Y], mask2["bbox"][Y])
+    w = max(mask1["bbox"][X] + mask1["bbox"][W], mask2["bbox"][X] + mask2["bbox"][W]) - x
+    h = max(mask1["bbox"][Y] + mask1["bbox"][H], mask2["bbox"][Y] + mask2["bbox"][H]) - y
+
+    crop_x = min(mask1["crop_box"][X], mask2["crop_box"][X])
+    crop_y = min(mask1["crop_box"][Y], mask2["crop_box"][Y])
+    crop_w = max(mask1["crop_box"][X] + mask1["crop_box"][W], mask2["crop_box"][X] + mask2["crop_box"][W]) - crop_x
+    crop_h = max(mask1["crop_box"][Y] + mask1["crop_box"][H], mask2["crop_box"][Y] + mask2["crop_box"][H]) - crop_y
+    
     return {
             "segmentation": mask1["segmentation"] | mask2["segmentation"],
             "area": mask1["area"] + mask2["area"] - (mask1["segmentation"] & mask2["segmentation"]).sum(),
-            "bbox": [
-                min(mask1["bbox"][0], mask2["bbox"][0]),
-                min(mask1["bbox"][1], mask2["bbox"][1]),
-                max(mask1["bbox"][0] + mask1["bbox"][2], mask2["bbox"][0] + mask2["bbox"][2]),
-                max(mask1["bbox"][1] + mask1["bbox"][3], mask2["bbox"][1] + mask2["bbox"][3])
-            ],
+            "bbox": [x, y, w, h],
             "predicted_iou": (mask1["predicted_iou"] * mask1["area"] + mask2["predicted_iou"] * mask2["area"]) / (mask1["area"] + mask2["area"]),
             "point_coords": [[
-                (mask1["point_coords"][0][0] * mask1["area"] + mask2["point_coords"][0][0] * mask2["area"]) / (mask1["area"] + mask2["area"]),
-                (mask1["point_coords"][0][1] * mask1["area"] + mask2["point_coords"][0][1] * mask2["area"]) / (mask1["area"] + mask2["area"])
+                (mask1["point_coords"][0][X] * mask1["area"] + mask2["point_coords"][0][X] * mask2["area"]) / (mask1["area"] + mask2["area"]),
+                (mask1["point_coords"][0][Y] * mask1["area"] + mask2["point_coords"][0][Y] * mask2["area"]) / (mask1["area"] + mask2["area"])
             ]],
             "stability_score": (mask1["stability_score"] * mask1["area"] + mask2["stability_score"] * mask2["area"]) / (mask1["area"] + mask2["area"]),
-            "crop_box": [
-                min(mask1["crop_box"][0], mask2["crop_box"][0]),
-                min(mask1["crop_box"][1], mask2["crop_box"][1]),
-                max(mask1["crop_box"][0] + mask1["crop_box"][2], mask2["crop_box"][0] + mask2["crop_box"][2]),
-                max(mask1["crop_box"][1] + mask1["crop_box"][3], mask2["crop_box"][1] + mask2["crop_box"][3]),
-            ]
+            "crop_box": [crop_x, crop_y, crop_w, crop_h]
         }
 
-def box_mask_intersection(maskA, maskB):
+def box_mask_intersection(maskA, maskB, threshold=0.05):
     mask = maskA["segmentation"]
     box = maskB["bbox"]
+    x, y, w, h = clip_to_image(box, mask.shape[1], mask.shape[0])
 
-    # check borders for segmentation intersection
-    return any(np.any(mask[box[0], box[1]:box[1]+box[3]]),
-               np.any(mask[box[1], box[0]:box[0]+box[2]]),
-               np.any(mask[box[0]+box[2], box[1]:box[1]+box[3]]),
-               np.any(mask[box[1]+box[3], box[0]:box[0]+box[2]]))
+    # box = [x, y, w, h]
+    # print(box, mask.shape)
+
+    # # check borders for segmentation intersection
+    # # NOTE: sometimes predicted bbox extends beyond image, so preprocess and cut
+
+    # return any((np.any(mask[box[Y]:box[Y]+box[H], box[X]]),
+    #             np.any(mask[box[Y], box[X]:box[X]+box[W]]),
+    #             np.any(mask[box[Y]:box[Y]+box[H], box[X]+box[W]]),
+    #             np.any(mask[box[Y]+box[H], box[X]:box[X]+box[W]])))
+
+    return maskA["segmentation"][y:y+h, x:x+w].sum() > maskA["area"] * threshold
 
 def intersection_over_smaller(boxA, boxB):
-    # xA = max(boxA["bbox"][0], boxB["bbox"][0])
-    # yA = max(boxA["bbox"][1], boxB["bbox"][1])
-    # xB = min(boxA["bbox"][0] + boxA["bbox"][2], boxB["bbox"][0] + boxB["bbox"][2])
-    # yB = min(boxA["bbox"][1] + boxA["bbox"][3], boxB["bbox"][1] + boxB["bbox"][3])
+    # xA = max(boxA["bbox"][X], boxB["bbox"][X])
+    # yA = max(boxA["bbox"][Y], boxB["bbox"][Y])
+    # xB = min(boxA["bbox"][X] + boxA["bbox"][W], boxB["bbox"][X] + boxB["bbox"][W])
+    # yB = min(boxA["bbox"][Y] + boxA["bbox"][H], boxB["bbox"][Y] + boxB["bbox"][H])
 
     # interArea = max(0, xB - xA) * max(0, yB - yA)
-    # boxAArea = boxA["bbox"][2] * boxA["bbox"][3]
-    # boxBArea = boxB["bbox"][2] * boxB["bbox"][3]
+    # boxAArea = boxA["bbox"][W] * boxA["bbox"][H]
+    # boxBArea = boxB["bbox"][W] * boxB["bbox"][H]
 
     interArea = (boxA["segmentation"] & boxB["segmentation"]).sum()
     boxAArea = boxA["segmentation"].sum()
@@ -89,16 +104,15 @@ def supress_subsets(masks, n_final_masks=4):
         masks.pop(mask2_index)
         ios_matrix = np.delete(np.delete(ios_matrix, mask2_index, axis=0), mask2_index, axis=1)
 
-    return masks
-
 def suppress_small_masks(masks, area=600):
     # if takes all chhota masks, sees its border's interesection with bigger masks and combines if match
     masks.sort(key=lambda x: x["area"])
     i = 0
-    while True:
+    while i < len(masks):
         mask = masks[i]
         if mask["area"] > area:
-            break
+            i+=1
+            continue
         j = i+1
         while j < len(masks):
             # check intersection of mask with all bigger masks
@@ -121,7 +135,7 @@ mobile_sam.eval()
 
 mask_generator = SamAutomaticMaskGenerator(
     mobile_sam,
-    points_per_side=8,  # Reduced significantly to get larger segments
+    points_per_side=16,  # Reduced significantly to get larger segments
     min_mask_region_area=1024
 )
 
@@ -131,36 +145,43 @@ class Segmenter:
 
     def segment(self, image):
         masks = mask_generator.generate(np.array(image))
+
         if len(masks) == 0:
             return [{
                 'segmentation': np.ones((image.size[1], image.size[0]), dtype=bool),
-                'area': image.size[1]*image.size[0],
+                'area': image.shape[0] * image.shape[1],
                 'bbox': [0, 0, image.size[1], image.size[0]],
                 'predicted_iou': -1,
                 'point_coords': [image.size[1]//2, image.size[0]//2],
                 'stability_score': -1,
                 'crop_box': [0, 0, image.size[1], image.size[0]]
             }]
-        return supress_subsets(masks, n_final_masks=4)
+        # supress_subsets(masks, n_final_masks=4)
+
+        # try and combine all masks smaller than 1% of the image area with bigger masks
+        min_area = (image.size[1]*image.size[0]) * 0.01
+        # suppress_small_masks(masks, min_area)
+
+        return masks
     
 if __name__ == "__main__":
     s = Segmenter()
     images = []
     for path in os.listdir('images_test'):
         image = Image.open(f'images_test/{path}').convert("RGB")
-        image = np.array(image)
         images.append(image)
 
+    shutil.rmtree('./segmentations_test', ignore_errors=True)
+    os.mkdir('./segmentations_test')
+
     for i, image in tqdm(enumerate(images)):
-        masks = s.segment(image)        
+        masks = s.segment(image)
+ 
         if len(masks) == 0:
             continue
-        sorted_anns = sorted(masks, key=(lambda x: x['area']), reverse=True)
-        ax = plt.gca()
-        ax.set_autoscale_on(False)
         
-        for j, ann in enumerate(sorted_anns):
-            segmented_img = image.copy()
+        for j, ann in enumerate(masks):
+            segmented_img = np.array(image.copy())
             m = ann['segmentation']
             segmented_img[m] = np.array([0, 0, 255])
             save_img = Image.fromarray(segmented_img)
