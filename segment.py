@@ -1,4 +1,5 @@
 from mobile_sam import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
+from torchvision.models.detection import maskrcnn_resnet50_fpn_v2
 import torch
 import cv2
 from matplotlib import pyplot as plt
@@ -8,6 +9,8 @@ from tqdm import tqdm
 from PIL import Image
 from utils import clip_to_image
 import shutil
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 X = 0
 Y = 1
@@ -124,27 +127,25 @@ def suppress_small_masks(masks, area=600):
             j+=1
         i+=1
         
-model_type = "vit_t"
-sam_checkpoint = "./weights/mobile_sam.pt"
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
-mobile_sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
-mobile_sam.to(device=device)
-mobile_sam.eval()
-
-mask_generator = SamAutomaticMaskGenerator(
-    mobile_sam,
-    points_per_side=16,  # Reduced significantly to get larger segments
-    min_mask_region_area=1024
-)
-
-class Segmenter:
+class SAMSegmenter:
     def __init__(self):
-        pass
+        model_type = "vit_t"
+        sam_checkpoint = "./weights/mobile_sam.pt"
+
+        mobile_sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
+        mobile_sam.to(device=device)
+        mobile_sam.eval()
+
+        self.mask_generator = SamAutomaticMaskGenerator(
+            mobile_sam,
+            points_per_side=16,
+            min_mask_region_area=1024
+        )
+
 
     def segment(self, image):
-        masks = mask_generator.generate(np.array(image))
+        masks = self.mask_generator.generate(np.array(image))
 
         if len(masks) == 0:
             return [{
@@ -160,12 +161,23 @@ class Segmenter:
 
         # try and combine all masks smaller than 1% of the image area with bigger masks
         min_area = (image.size[1]*image.size[0]) * 0.01
-        # suppress_small_masks(masks, min_area)
+        suppress_small_masks(masks, min_area)
 
         return masks
+
+class MaskRCNNSegmenter:
+    def __init__(self):
+        self.mask_generator = maskrcnn_resnet50_fpn_v2(pretrained=True)
+        self.mask_generator.to(device=device)
+        self.mask_generator.eval()
+
+    def segment(self, image):
+        masks = self.mask_generator(np.array(image))
+        for mask in masks:
+            mask["segmentation"] = mask.pop("mask").cpu().numpy() > 0.5
     
 if __name__ == "__main__":
-    s = Segmenter()
+    s = SAMSegmenter()
     images = []
     for path in os.listdir('images_test'):
         image = Image.open(f'images_test/{path}').convert("RGB")

@@ -22,9 +22,10 @@ from hashes.whash import whash
 def extract_hashes(image):
     hashed_bokehs = []
 
-    blurred_image = image.filter(ImageFilter.GaussianBlur(radius=BLUR_RADIUS)) # for bokeh
+    blurred_image = image.filter(ImageFilter.GaussianBlur(radius=BLUR_RADIUS * min(image.size) / 360)) # for bokeh
 
-    segments = s.segment(image.filter(ImageFilter.GaussianBlur(radius=SLIGHT_BLUR_RADIUS))) # to remove edge detail
+    # slight_blurred_image = image.filter(ImageFilter.GaussianBlur(radius=SLIGHT_BLUR_RADIUS * min(image.size) / 360))
+    segments = s.segment(image)
 
     for j, ann in enumerate(segments):
         segmented_img = np.array(image)
@@ -32,9 +33,11 @@ def extract_hashes(image):
         segmented_img[m] = np.array([0, 0, 255])
         save_img = Image.fromarray(segmented_img)
         save_img.save(f"segmentations_test/{j}.png")
+    
 
     bokehs = create_bokehs(image, blurred_image, [segment["segmentation"] for segment in segments])
     print(len(segments))
+
     for segment_index in range(len(segments)):
         left, top, right, bottom = bbox_to_ltrb(clip_to_image(segments[segment_index]["bbox"], *image.size))
         print(left, top, right, bottom)
@@ -53,7 +56,7 @@ args = parser.parse_args()
 
 #TODO: Implement np.packbits to reduce size of storage by 8x. Also test XOR on uint8 storage to see if speedup
 BLUR_RADIUS = 20  # for 360x360
-SLIGHT_BLUR_RADIUS = 2
+SLIGHT_BLUR_RADIUS = 4
 N_SEGMENT_RETRIEVAL = 10
 N_IMAGE_RETRIEVAL = 5
 

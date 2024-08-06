@@ -11,10 +11,10 @@ seed1 = seed1.reshape([96, 128])
 
 # Load ONNX model
 session = onnxruntime.InferenceSession("./hashes/model.onnx")
-# sess_opts = onnxruntime.SessionOptions()
+sess_opts = onnxruntime.SessionOptions()
 
-# sess_opts.inter_op_num_threads = 24
-# sess_opts.intra_op_num_threads = 24
+sess_opts.inter_op_num_threads = 8
+sess_opts.intra_op_num_threads = 8
 
 def neuralhash(ims, bits=128, *args, **kwargs):
     # Load output hash matrix
