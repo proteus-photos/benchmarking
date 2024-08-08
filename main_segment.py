@@ -12,7 +12,7 @@ from hashes.blockhash import blockhash
 from hashes.neuralhash import neuralhash
 from utils import match, create_bokehs, bbox_to_ltrb, clip_to_image
 from database import Database
-from segment import Segmenter
+from segment import MaskRCNNSegmenter, SAMSegmenter, YOLOSegmenter
 
 from hashes.dhash import dhash
 from hashes.ahash import ahash
@@ -66,10 +66,10 @@ transformations = ['screenshot', 'crop', 'double screenshot'] #, 'jpeg']
 hash_method = neuralhash
 
 dataset_folder = './dataset/imagenet/images'
-image_files = [f for f in os.listdir(dataset_folder)][:20]
+image_files = [f for f in os.listdir(dataset_folder)][:100]
 
 t = Transformer()
-s = Segmenter()
+s = YOLOSegmenter()
 
 os.makedirs("databases", exist_ok=True)
 databases = []

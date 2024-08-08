@@ -4,6 +4,7 @@ from PIL import Image
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 import gc
+import argparse
 
 from transformer import Transformer
 from hashes.blockhash import blockhash
@@ -15,20 +16,25 @@ from hashes.dhash import dhash
 from hashes.ahash import ahash
 from hashes.phash import phash
 from hashes.whash import whash
+from hashes.neuralhash import neuralhash
 
-transformations = ['screenshot'] #, 'double screenshot', 'jpeg', 'crop']
-hash_methods = [phash, whash] #, blockhash, whash, dhash, neuralhash
+transformations = ['screenshot', 'double screenshot', 'jpeg', 'crop']
+hash_methods = [neuralhash] # dhash, phash, blockhash, whash
 
 dataset_folder = './dataset/imagenet/images'
-image_files = [f for f in os.listdir(dataset_folder)]
+image_files = [f for f in os.listdir(dataset_folder)][:100]
+
+parser = argparse.ArgumentParser(description ='Perform retrieval benchmarking based on segmenting.')
+parser.add_argument('-r', '--refresh', action='store_true')
+
+args = parser.parse_args()
 
 t = Transformer()
 
 os.makedirs("databases", exist_ok=True)
 databases = []
-
 for hash_method in hash_methods:
-    if hash_method.__name__ + ".npy" not in os.listdir("databases"):
+    if hash_method.__name__ + ".npy" not in os.listdir("databases") or args.refresh:
         print("Creating database for", hash_method.__name__)
         original_hashes = []
         for image_file in tqdm(image_files):

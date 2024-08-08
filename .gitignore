@@ -2,3 +2,6 @@
 **/imagenet
 *.sh
 /weights/
+/datasets/
+/yolov8n-seg.pt
+/imagenet.zip

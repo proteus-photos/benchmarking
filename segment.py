@@ -1,5 +1,6 @@
 from mobile_sam import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
-from torchvision.models.detection import maskrcnn_resnet50_fpn_v2
+from torchvision.models.detection import maskrcnn_resnet50_fpn_v2, MaskRCNN_ResNet50_FPN_V2_Weights
+from ultralytics import YOLO
 import torch
 import cv2
 from matplotlib import pyplot as plt
@@ -167,15 +168,49 @@ class SAMSegmenter:
 
 class MaskRCNNSegmenter:
     def __init__(self):
-        self.mask_generator = maskrcnn_resnet50_fpn_v2(pretrained=True)
+        self.mask_generator = maskrcnn_resnet50_fpn_v2(weights=MaskRCNN_ResNet50_FPN_V2_Weights.DEFAULT)
         self.mask_generator.to(device=device)
         self.mask_generator.eval()
 
     def segment(self, image):
-        masks = self.mask_generator(np.array(image))
-        for mask in masks:
-            mask["segmentation"] = mask.pop("mask").cpu().numpy() > 0.5
+        image = torch.from_numpy(np.array(image)).permute(2, 0, 1).float().unsqueeze(0).to(device) / 255
+        print(image.max(), image.min())
+        masks = self.mask_generator(image)[0]
+
+        masks["bbox"] = masks.pop("boxes").detach().cpu().numpy()
+        masks["segmentation"]  = masks.pop("masks").detach().cpu().squeeze(1).numpy() > 0.5
+        masks["area"] = masks["segmentation"].sum(axis=(1, 2))
+        masks["label"] = masks.pop("labels").detach().cpu().numpy()
+        masks["score"] = masks.pop("scores").detach().cpu().numpy()
+
+        masks = [dict(zip(masks.keys(), t)) for t in zip(*masks.values())]
+        return masks
     
+class YOLOSegmenter:
+    def __init__(self):
+        self.mask_generator = YOLO("./weights/yolov8n-seg.pt")
+        self.mask_generator.to(device=device)
+
+    def segment(self, image):
+        input_image = torch.from_numpy(np.array(image.resize((320, 320)))).permute(2, 0, 1).float().unsqueeze(0).to(device) / 255
+        results = self.mask_generator(input_image)[0].cpu().numpy()
+        if len(results) == 0:
+            return [{
+                "segmentation": np.ones((image.size[1], image.size[0]), dtype=bool),
+                "area": image.size[0] * image.size[1],
+                "bbox": [0, 0, image.size[0], image.size[1]]
+            }]
+        masks = {}
+        masks["bbox"] = results.boxes.xywh
+        masks["bbox"][:, ::2] *= image.size[0] / 320
+        masks["bbox"][:, 1::2] *= image.size[1] / 320
+        masks["segmentation"]  = [np.array(Image.fromarray(mask.repeat(3, axis=-1)).resize(image.size))[..., 0] > 0.5
+                                  for mask in results.masks.data[..., None].astype(np.uint8)*255]
+        masks["area"] = [mask.sum() for mask in masks["segmentation"]]
+
+        masks = [dict(zip(masks.keys(), t)) for t in zip(*masks.values())]
+        return masks
+     
 if __name__ == "__main__":
     s = SAMSegmenter()
     images = []
