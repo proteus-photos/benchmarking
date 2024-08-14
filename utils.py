@@ -34,4 +34,4 @@ def clip_to_image(box, width, height):
     w = min(width, box[X]+box[W]) - x
     h = min(height, box[Y]+box[H]) - y
 
-    return [round(x), round(y), round(w), round(h)]
+    return [round(x), round(y), round(w), round(h)]gkt
