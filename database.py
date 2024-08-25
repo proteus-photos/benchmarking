@@ -1,6 +1,7 @@
 import numpy as np
 from multiprocessing import Pool
 import os
+import json
 
 class Database:
     def __init__(self, hashes=None, storedir=None, metadata=None, refresh=True):        
@@ -27,17 +28,13 @@ class Database:
                 else:
                     self.metadata = None
 
-    def query(self, hash, k=1, start_index=None, end_index=None):
-        if start_index is None:
-            start_index = 0
-        if end_index is None:
-            end_index = len(self.hashes)
+    def query(self, hash, k=1):
         
-        similarity = (hash.reshape(1, -1) == self.hashes[start_index:end_index]).sum(axis=1)
+        similarity = (hash.reshape(1, -1) == self.hashes).sum(axis=1)
 
         inds = np.argpartition(similarity, -k)[-k:] # top k nearest hashes
 
-        return_data = [{"index": start_index+ind, "hash": self.hashes[start_index+ind], "score": similarity[ind]} for ind in inds]
+        return_data = [{"index": ind, "hash": self.hashes[ind], "score": similarity[ind]} for ind in inds]
 
         if self.metadata is not None:
             for data in return_data:
@@ -45,16 +42,57 @@ class Database:
         
         return return_data
     
-    def parallel_query(self, hash, k=1, num_workers=16):
-        start_indices = np.arange(0, len(self.hashes), len(self.hashes)//num_workers)
-        end_indices = np.concatenate([start_indices[1:], [len(self.hashes)]])
-
+    def parallel_query(self, hashes, k=1, num_workers=8):
         with Pool(num_workers) as p:
-            queries_promise = p.starmap_async(self.query, [(hash, k, start_indices[i], end_indices[i]) for i in range(num_workers)])
-            return_data = [point for points in queries_promise.get() for point in points]
-        
-        # since we have the top k nearest hashes for each worker, we need to find the top k nearest hashes overall
-        similarity = np.array([point["score"] for point in return_data])
-        inds = np.argpartition(similarity, -k)[-k:]
+            queries_promise = p.starmap_async(self.query, [(hash, k) for hash in hashes])
+            return_data = [points for points in queries_promise.get()]
 
-        return [return_data[ind] for ind in inds]
+        return return_data
+    
+class TileDatabase:
+    def __init__(self, n_tiles, hashes=None, storedir=None, anchors=None, refresh=True):  
+        self.n_tiles = n_tiles      
+        if hashes is None:
+            if storedir is None:
+                raise ValueError
+            else:
+                self.hashes = np.load(storedir+".npy")
+                if anchors is None:
+                    try:
+                        self.anchors = np.load(storedir+"_anchors.npy")
+                    except FileNotFoundError:
+                        self.anchors = None
+                else:
+                    self.anchors = np.array(anchors)
+                    np.save(storedir+"_anchors", anchors)
+        else:
+            self.hashes = np.array(hashes)
+            if storedir is not None:
+                np.save(storedir, hashes)
+                if anchors is not None:
+                    self.anchors = np.array(anchors)
+                    np.save(storedir+"_anchors", anchors)
+                else:
+                    self.anchors = None
+        self.hashes = self.hashes.reshape(-1, n_tiles, n_tiles, self.hashes.shape[-1])
+
+    def query(self, hash, k=1):
+        
+        similarity = (hash.reshape(1, -1) == self.hashes).sum(axis=1)
+
+        inds = np.argpartition(similarity, -k)[-k:] # top k nearest hashes
+
+        return_data = [{"index": ind, "hash": self.hashes[ind], "score": similarity[ind]} for ind in inds]
+
+        if self.anchors is not None:
+            for data in return_data:
+                data["anchors"] = self.anchors[data["index"]]
+        
+        return return_data
+    
+    def parallel_query(self, hashes, k=1, num_workers=8):
+        with Pool(num_workers) as p:
+            queries_promise = p.starmap_async(self.query, [(hash, k) for hash in hashes])
+            return_data = [points for points in queries_promise.get()]
+
+        return return_data

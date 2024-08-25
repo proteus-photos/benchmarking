@@ -18,11 +18,13 @@ from hashes.phash import phash
 from hashes.whash import whash
 from hashes.neuralhash import neuralhash
 
-transformations = ['screenshot', 'double screenshot', 'jpeg', 'crop']
+transformations = ['screenshot'] #, 'double screenshot', 'jpeg', 'crop']
 hash_methods = [neuralhash] # dhash, phash, blockhash, whash
 
 dataset_folder = './dataset/imagenet/images'
-image_files = [f for f in os.listdir(dataset_folder)][:100]
+image_files = [f for f in os.listdir(dataset_folder)][:10_000]
+
+N_IMAGE_RETRIEVAL = 5
 
 parser = argparse.ArgumentParser(description ='Perform retrieval benchmarking based on segmenting.')
 parser.add_argument('-r', '--refresh', action='store_true')
@@ -56,7 +58,7 @@ for index, image_file in tqdm(enumerate(image_files), total=len(image_files)):
         transformed_image = t.transform(image, transformation)
         for i, (hash_method, database) in enumerate(zip(hash_methods, databases)):
             modified_hash = hash_method([transformed_image])[0]
-            result = database.query(modified_hash, k=5)
+            result = database.query(modified_hash, k=N_IMAGE_RETRIEVAL)
             if index in [point["index"] for point in result]:
                 n_matches[i, j] += 1
     gc.collect()

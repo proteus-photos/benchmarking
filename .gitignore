@@ -5,3 +5,5 @@
 /datasets/
 /yolov8n-seg.pt
 /imagenet.zip
+/plots/
+/logs/

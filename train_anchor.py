@@ -154,7 +154,7 @@ def distance(point1, point2):
     return torch.exp(-torch.abs(point1 - point2).sum(dim=1) * SHARPNESS) / SHARPNESS
     
 def reparametrize(outs):
-    # converts two floats (0, 1) to left margin and right margin
+    # converts two floats (0, inf) to left margin and right margin
     # s.t. second point always >= first point
 
     # MIN_MARGIN = 0.3  # actual minimum distance = MIN_MARGIN / (2 + MIN_MARGIN)
@@ -167,6 +167,10 @@ def reparametrize(outs):
         (y1s + MIN_MARGIN) / (y1s + y2s + MIN_MARGIN)
     )
 
+    if torch.all(normalized[0] < 1e-5) and torch.all(torch.all(normalized[1] < 1e-5)) and torch.all(normalized[2] > 1-1e-5) and torch.all(normalized[3] > 1-1e-5):
+        print(f"RETURN_VALUE:{-1}", file=sys.stderr)
+        exit()
+        
     return torch.stack(normalized, dim=1)
 
 def transform_point(point, anchors1, anchors2):
@@ -289,7 +293,7 @@ if __name__ == "__main__":
         nn.Hardswish(),
         # nn.Dropout(p=0.2, inplace=True),
         nn.Linear(1280, 4),
-        nn.Sigmoid()
+        nn.ReLU()
     )
 
     # model.load_state_dict(torch.load('finetuned_mobilenetv3.pth'))
@@ -303,11 +307,11 @@ if __name__ == "__main__":
         if "classifier" in name:
             classifier_params.append(param)
             param.requires_grad = True
-            print(param.shape, name)
+            # print(param.shape, name)
         elif any("features."+str(x) in name for x in range(9, 17)):
             last_blocks_params.append(param)
             param.requires_grad = True
-            print(param.shape, name)
+            # print(param.shape, name)
         else:
             param.requires_grad = False
 
@@ -352,7 +356,6 @@ if __name__ == "__main__":
     # else:
     start_epoch = 0
     #     print("No checkpoint found. Starting from scratch.")
-
     for epoch in range(start_epoch, num_epochs):
         model.train()
         train_loss = 0.0
@@ -402,9 +405,6 @@ if __name__ == "__main__":
                 val_loss += loss.item()
         val_loss /= len(val_loader)
 
-        if epoch >=25 and val_loss > 0.55:
-            print(f"RETURN_VALUE:{-1}", file=sys.stderr)
-            exit()
         # Save checkpoint
         # torch.save({
         #     'epoch': epoch+1,

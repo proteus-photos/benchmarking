@@ -158,7 +158,7 @@ class SAMSegmenter:
                 'stability_score': -1,
                 'crop_box': [0, 0, image.size[1], image.size[0]]
             }]
-        # supress_subsets(masks, n_final_masks=4)
+        supress_subsets(masks, n_final_masks=5)
 
         # try and combine all masks smaller than 1% of the image area with bigger masks
         min_area = (image.size[1]*image.size[0]) * 0.01
@@ -188,27 +188,41 @@ class MaskRCNNSegmenter:
     
 class YOLOSegmenter:
     def __init__(self):
-        self.mask_generator = YOLO("./weights/yolov8n-seg.pt")
+        self.mask_generator = YOLO("./weights/yolov8x.pt")
         self.mask_generator.to(device=device)
 
     def segment(self, image):
-        input_image = torch.from_numpy(np.array(image.resize((320, 320)))).permute(2, 0, 1).float().unsqueeze(0).to(device) / 255
-        results = self.mask_generator(input_image)[0].cpu().numpy()
+        # input_image = torch.from_numpy(np.array(image.resize((320, 320)))).permute(2, 0, 1).float().unsqueeze(0).to(device) / 255
+        results = self.mask_generator(image, verbose=False)[0].cpu().numpy()
         if len(results) == 0:
             return [{
                 "segmentation": np.ones((image.size[1], image.size[0]), dtype=bool),
-                "area": image.size[0] * image.size[1],
+                "area": 1,
                 "bbox": [0, 0, image.size[0], image.size[1]]
             }]
         masks = {}
         masks["bbox"] = results.boxes.xywh
-        masks["bbox"][:, ::2] *= image.size[0] / 320
-        masks["bbox"][:, 1::2] *= image.size[1] / 320
-        masks["segmentation"]  = [np.array(Image.fromarray(mask.repeat(3, axis=-1)).resize(image.size))[..., 0] > 0.5
-                                  for mask in results.masks.data[..., None].astype(np.uint8)*255]
-        masks["area"] = [mask.sum() for mask in masks["segmentation"]]
+        masks["bbox"][:, :2] -= masks["bbox"][:, 2:] / 2
+
+        masks["segmentation"]  = [np.zeros(image.size, dtype=bool).T for _ in range(len(results))]
+
+        results.save(filename=f"test.jpg")
+
+        for i, bbox in enumerate(masks["bbox"]):
+            bbox = [int(x) for x in bbox]
+            masks["segmentation"][i][bbox[1]:bbox[1]+bbox[3], bbox[0]:bbox[0]+bbox[2]] = True
+
+        # masks["segmentation"]  = [np.array(Image.fromarray(mask.repeat(3, axis=-1)).resize(image.size))[..., 0] > 0.5
+        #                           for mask in results.masks.data[..., None].astype(np.uint8)*255]
+
+        masks["area"] = [mask.sum()/mask.size for mask in masks["segmentation"]]
 
         masks = [dict(zip(masks.keys(), t)) for t in zip(*masks.values())]
+        masks.append({
+            "segmentation": np.ones((image.size[1], image.size[0]), dtype=bool),
+            "area": 1,
+            "bbox": [0, 0, image.size[0], image.size[1]]
+        })
         return masks
      
 if __name__ == "__main__":
