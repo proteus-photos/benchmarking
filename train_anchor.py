@@ -19,6 +19,7 @@ from PIL import Image
 import numpy as np
 import argparse
 import sys
+from utils import transform, inverse_transform, reparametricize
 
 torch.backends.cudnn.benchmark = True
 torch.manual_seed(42)
@@ -152,26 +153,6 @@ def original_coordinates(outs, states):
 def distance(point1, point2):
     # SHARPNESS = 3
     return torch.exp(-torch.abs(point1 - point2).sum(dim=1) * SHARPNESS) / SHARPNESS
-    
-def reparametrize(outs):
-    # converts two floats (0, inf) to left margin and right margin
-    # s.t. second point always >= first point
-
-    # MIN_MARGIN = 0.3  # actual minimum distance = MIN_MARGIN / (2 + MIN_MARGIN)
-
-    x1s, y1s, x2s, y2s = outs[:, X1], outs[:, Y1], outs[:, X2], outs[:, Y2]
-    normalized = (
-        x1s / (x1s + x2s + MIN_MARGIN),
-        y1s / (y1s + y2s + MIN_MARGIN), 
-        (x1s + MIN_MARGIN) / (x1s + x2s + MIN_MARGIN),
-        (y1s + MIN_MARGIN) / (y1s + y2s + MIN_MARGIN)
-    )
-
-    if torch.all(normalized[0] < 1e-5) and torch.all(torch.all(normalized[1] < 1e-5)) and torch.all(normalized[2] > 1-1e-5) and torch.all(normalized[3] > 1-1e-5):
-        print(f"RETURN_VALUE:{-1}", file=sys.stderr)
-        exit()
-        
-    return torch.stack(normalized, dim=1)
 
 def transform_point(point, anchors1, anchors2):
     # The resulting coordinates will be in the space of anchors2
@@ -263,14 +244,14 @@ def overlap_loss(out1s, state1s, out2s, state2s):
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("--w_coeff", type=float, default=1.0, help="Weight coefficient for the weighted box loss")
-    parser.add_argument("--i_coeff", type=float, default=1.0, help="Weight coefficient for the IOU loss")
-    parser.add_argument("--o_coeff", type=float, default=1.0, help="Weight coefficient for the overlap loss")
-    parser.add_argument("--min_margin", type=float, default=0.3, help="Minimum margin for the transform_point function")
-    parser.add_argument("--gamma", type=float, default=0.3, help="Gamma for the box loss function")
-    parser.add_argument("--sharpness", type=float, default=3.0, help="Sharpness for the distance function")
-    parser.add_argument("--lr1", type=float, default=4.0, help="Learning rate for the classifier")
-    parser.add_argument("--lr2", type=float, default=5.0, help="Learning rate for the last blocks")
+    parser.add_argument("--w_coeff", type=float, default=2.0, help="Weight coefficient for the weighted box loss")
+    parser.add_argument("--i_coeff", type=float, default=0.0, help="Weight coefficient for the IOU loss")
+    parser.add_argument("--o_coeff", type=float, default=2.0, help="Weight coefficient for the overlap loss")
+    parser.add_argument("--min_margin", type=float, default=0.5, help="Minimum margin for the transform_point function")
+    parser.add_argument("--gamma", type=float, default=0.2, help="Gamma for the box loss function")
+    parser.add_argument("--sharpness", type=float, default=5.0, help="Sharpness for the distance function")
+    parser.add_argument("--lr1", type=float, default=4.5, help="Learning rate for the classifier")
+    parser.add_argument("--lr2", type=float, default=3.0, help="Learning rate for the last blocks")
     parser.add_argument("--id", type=int, default=0, help="ID of the experiment")
 
     args = parser.parse_args()
@@ -320,17 +301,6 @@ if __name__ == "__main__":
         {'params': last_blocks_params, 'lr': lr2},
     ])
 
-    transform = transforms.Compose([
-        transforms.Resize((IM_SIZE, IM_SIZE)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ])
-
-    inverse_transform = transforms.Compose([
-        transforms.Normalize(mean=[0., 0., 0.], std=[1/0.229, 1/0.224, 1/0.225]),
-        transforms.Normalize(mean=[-0.485, -0.456, -0.406], std=[1., 1., 1.]),
-    ])
-
 
     dataset = CustomDataset("./dataset/imagenet/images", transform=transform)
 
@@ -342,7 +312,7 @@ if __name__ == "__main__":
     val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, drop_last=False)
 
     # Training loop
-    num_epochs = 30
+    num_epochs = 60
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     print(device)
@@ -369,9 +339,9 @@ if __name__ == "__main__":
             optimizer.zero_grad()
 
             output1s = model(image1s)
-            output1s = reparametrize(output1s)
+            output1s = reparametricize(output1s, MIN_MARGIN)
             output2s = model(image2s)
-            output2s = reparametrize(output2s)
+            output2s = reparametricize(output2s, MIN_MARGIN)
             
             loss = w_coeff*weighted_box_loss(output1s, state1s, output2s, state2s) + o_coeff*overlap_loss(output1s, state1s, output2s, state2s) + i_coeff*iou_loss(output1s, state1s, output2s, state2s)
 
@@ -397,9 +367,9 @@ if __name__ == "__main__":
                 optimizer.zero_grad()
 
                 output1s = model(image1s)
-                output1s = reparametrize(output1s)
+                output1s = reparametricize(output1s, MIN_MARGIN)
                 output2s = model(image2s)
-                output2s = reparametrize(output2s)
+                output2s = reparametricize(output2s, MIN_MARGIN)
 
                 loss = overlap_loss(output1s, state1s, output2s, state2s)            
                 val_loss += loss.item()

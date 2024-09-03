@@ -2,6 +2,22 @@ import numpy as np
 from multiprocessing import Pool
 import os
 import json
+from tqdm import tqdm
+
+X = 0
+Y = 1
+def transform_point(point, anchors1, anchors2):
+    # The resulting coordinates will be in the space of anchors2
+    x11, y11, x12, y12 = anchors1.T
+    x21, y21, x22, y22 = anchors2.T
+
+    a_x = (x21 - x22) / (x11 - x12)
+    b_x = x21 - a_x * x11
+    
+    a_y = (y21 - y22) / (y11 - y12)
+    b_y = y21 - a_y * y11
+
+    return a_x * point[X] + b_x, a_y * point[Y] + b_y
 
 class Database:
     def __init__(self, hashes=None, storedir=None, metadata=None, refresh=True):        
@@ -30,11 +46,11 @@ class Database:
 
     def query(self, hash, k=1):
         
-        similarity = (hash.reshape(1, -1) == self.hashes).sum(axis=1)
+        similarities = (hash.reshape(1, -1) == self.hashes).sum(axis=1)
 
-        inds = np.argpartition(similarity, -k)[-k:] # top k nearest hashes
+        inds = np.argpartition(similarities, -k)[-k:] # top k nearest hashes
 
-        return_data = [{"index": ind, "hash": self.hashes[ind], "score": similarity[ind]} for ind in inds]
+        return_data = [{"index": ind, "hash": self.hashes[ind], "score": similarities[ind]} for ind in inds]
 
         if self.metadata is not None:
             for data in return_data:
@@ -51,7 +67,11 @@ class Database:
     
 class TileDatabase:
     def __init__(self, n_tiles, hashes=None, storedir=None, anchors=None, refresh=True):  
-        self.n_tiles = n_tiles      
+        self.n_tiles = n_tiles
+        self.tile_size = 1 / n_tiles
+
+        # the hashes are stored as (n_images, n_tiles (col), n_tiles (row), hash_size)
+
         if hashes is None:
             if storedir is None:
                 raise ValueError
@@ -76,21 +96,81 @@ class TileDatabase:
                     self.anchors = None
         self.hashes = self.hashes.reshape(-1, n_tiles, n_tiles, self.hashes.shape[-1])
 
-    def query(self, hash, k=1):
+    def query(self, image, hasher, anchor_points, K_RETRIEVAL=1):
         
-        similarity = (hash.reshape(1, -1) == self.hashes).sum(axis=1)
+        # wrt the db images, what is the coordinates of the common portion?
+        left, top = transform_point(
+            np.array([0., 0.]),
+            anchor_points[None].repeat(len(self.anchors), axis=0), 
+            self.anchors
+        )
+        left, top = np.clip(left, 0, 1), np.clip(top, 0, 1)
 
-        inds = np.argpartition(similarity, -k)[-k:] # top k nearest hashes
+        right, bottom = transform_point(
+            np.array([1., 1.]),
+            anchor_points[None].repeat(len(self.anchors), axis=0),
+            self.anchors
+        )
+        right, bottom = np.clip(right, 0, 1), np.clip(bottom, 0, 1)
 
-        return_data = [{"index": ind, "hash": self.hashes[ind], "score": similarity[ind]} for ind in inds]
+        tile_range_left = np.ceil(left / self.tile_size)
+        tile_range_top = np.ceil(top / self.tile_size)
+        tile_range_right = np.floor(right / self.tile_size)
+        tile_range_bottom = np.floor(bottom / self.tile_size)
 
-        if self.anchors is not None:
-            for data in return_data:
-                data["anchors"] = self.anchors[data["index"]]
+        h_ranges = [np.arange(int(left), int(right)) for left, right in zip(tile_range_left, tile_range_right)]
+        v_ranges = [np.arange(int(top), int(bottom)) for top, bottom in zip(tile_range_top, tile_range_bottom)]
+
+        # contains the indices of the tiles that are common between the query image and the db images
+        tiles_indices_list = [np.array(np.meshgrid(v_range, h_range)).T.reshape(-1,2) for v_range, h_range in zip(h_ranges, v_ranges)]
+        # we take v, h because while indexing y axis comes first then h
+
+        tile_coordinates_list = [
+            [
+                (
+                    [h * self.tile_size, v * self.tile_size],
+                    [(h + 1) * self.tile_size, (v + 1) * self.tile_size]
+                ) for v, h in tiles_indices
+            ] for tiles_indices in tiles_indices_list
+        ]
+
+        similarities = []
+        for i, (tiles_indices, tile_coordinates, db_anchor) in enumerate(zip(tiles_indices_list, tile_coordinates_list, self.anchors)):
+            if len(tiles_indices) == 0:
+                similarities.append(0)
+                continue
+            
+            tile_images = []
+            for left_top, right_bottom in tile_coordinates:
+                # we find what the coordinates of the tile in the ORIGINAL image would be in our query image space
+                left, top = transform_point(left_top, db_anchor[None], anchor_points[None])
+                left, top = left[0]*image.size[0], top[0]*image.size[1]
+
+                right, bottom = transform_point(right_bottom, db_anchor[None], anchor_points[None])
+                right, bottom = right[0]*image.size[0], bottom[0]*image.size[1]
+
+                tile_images.append(image.crop((left, top, right, bottom)))
+
+            query_tile_hashes = hasher(tile_images)
+
+            query_tile_hashes = np.array(query_tile_hashes)
+            db_tile_hashes = self.hashes[i, tiles_indices[:, 1], tiles_indices[:, 0]]
+
+            # avg similarity for each tile
+            similarity = (query_tile_hashes == db_tile_hashes).sum() / len(query_tile_hashes)
+            similarities.append(similarity)
+
+        similarities = np.array(similarities)
+
+        inds = np.argpartition(similarities, -K_RETRIEVAL)[-K_RETRIEVAL:]
+
+        return_data = [{"index": ind, "score": similarities[ind]} for ind in inds]
         
         return return_data
     
-    def parallel_query(self, hashes, k=1, num_workers=8):
+    def multi_query(self, images, hasher, anchor_points_list, K_RETRIEVAL=1):
+        return [self.query(images, hasher, anchor_points, K_RETRIEVAL) for image, anchor_points in zip(tqdm(images), anchor_points_list)]
+    
         with Pool(num_workers) as p:
             queries_promise = p.starmap_async(self.query, [(hash, k) for hash in hashes])
             return_data = [points for points in queries_promise.get()]

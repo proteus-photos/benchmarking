@@ -1,6 +1,6 @@
 from PIL import Image
 import io
-
+from random import random
 class Transformer:
     def __init__(self):
         pass
@@ -17,11 +17,14 @@ class Transformer:
         elif method == 'crop':
             width, height = image.size
 
-            # 10% crop by default
-            left = 0.1
-            top = 0.1
-            right = 0.9
-            bottom = 0.9
+            # upto 20% crop by default, sum of both sides
+            horizontal = random() * 0.2
+            vertical = random() * 0.2
+
+            left = horizontal * random()
+            top = vertical * random()
+            right = 1 - (horizontal - left)
+            bottom = 1 - (vertical - top)
 
             # override defaults if provided
             # the arguments provided are taken as percentages (fractions)

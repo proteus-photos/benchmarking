@@ -27,13 +27,13 @@ def extract_hashes(image, fname):
 
     segments = s.segment(image)
 
-    # segmented_img = np.array(image)
+    segmented_img = np.array(image)
 
-    # for j, ann in enumerate(segments):
-    #     m = ann['segmentation']
-    #     segmented_img[m] = np.random.randint(0, 256, 3)
-    # save_img = Image.fromarray(segmented_img)
-    # save_img.save(f"{fname}.png")
+    for j, ann in enumerate(segments[:-1]):
+        m = ann['segmentation']
+        segmented_img[m] = np.random.randint(0, 256, 3)
+    save_img = Image.fromarray(segmented_img)
+    save_img.save(f"{fname}.png")
     
     bokehs = create_bokehs(image, blurred_image, [segment["segmentation"] for segment in segments])
 
@@ -66,7 +66,7 @@ dataset_folder = './dataset/imagenet/images'
 image_files = [f for f in os.listdir(dataset_folder)][:10_000]
 
 t = Transformer()
-s = YOLOSegmenter()
+s = SAMSegmenter()
 
 os.makedirs("databases", exist_ok=True)
 databases = []

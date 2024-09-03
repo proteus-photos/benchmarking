@@ -26,7 +26,7 @@ image_files = [f for f in os.listdir(dataset_folder)][:10_000]
 
 N_IMAGE_RETRIEVAL = 5
 
-parser = argparse.ArgumentParser(description ='Perform retrieval benchmarking based on segmenting.')
+parser = argparse.ArgumentParser(description ='Perform retrieval benchmarking.')
 parser.add_argument('-r', '--refresh', action='store_true')
 
 args = parser.parse_args()

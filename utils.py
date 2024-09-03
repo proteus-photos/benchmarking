@@ -12,11 +12,49 @@ from torchvision.utils import draw_bounding_boxes, draw_keypoints
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import sys
+from tqdm import tqdm
 
 X = 0
 Y = 1
 W = 2
 H = 3
+
+X1 = 0
+Y1 = 1
+X2 = 2
+Y2 = 3
+
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+])
+
+inverse_transform = transforms.Compose([
+    transforms.Normalize(mean=[0., 0., 0.], std=[1/0.229, 1/0.224, 1/0.225]),
+    transforms.Normalize(mean=[-0.485, -0.456, -0.406], std=[1., 1., 1.]),
+])
+
+def reparametricize(outs, MIN_MARGIN):
+    # converts two floats (0, inf) to left margin and right margin
+    # s.t. second point always >= first point
+
+    # MIN_MARGIN = 0.3  # actual minimum distance = MIN_MARGIN / (2 + MIN_MARGIN)
+
+    x1s, y1s, x2s, y2s = outs[:, X1], outs[:, Y1], outs[:, X2], outs[:, Y2]
+    normalized = (
+        x1s / (x1s + x2s + MIN_MARGIN),
+        y1s / (y1s + y2s + MIN_MARGIN), 
+        (x1s + MIN_MARGIN) / (x1s + x2s + MIN_MARGIN),
+        (y1s + MIN_MARGIN) / (y1s + y2s + MIN_MARGIN)
+    )
+
+    if torch.all(normalized[0] < 1e-5) and torch.all(torch.all(normalized[1] < 1e-5)) and torch.all(normalized[2] > 1-1e-5) and torch.all(normalized[3] > 1-1e-5):
+        print(f"RETURN_VALUE:{-1}", file=sys.stderr)
+        exit()
+        
+    return torch.stack(normalized, dim=1)
 
 def match(original_hash, modified_hash):
     # difference = original_hash ^ modified_hash
@@ -48,7 +86,7 @@ def clip_to_image(box, width, height):
 
     return [round(x), round(y), round(w), round(h)]
 
-def create_model():
+def create_model(checkpoint=None):
     model = mobilenet_v3_large(weights=MobileNet_V3_Large_Weights.DEFAULT)
 
     model.classifier = nn.Sequential(
@@ -59,15 +97,25 @@ def create_model():
         nn.ReLU()
     )
 
-    return model
+    if checkpoint is not None:
+        model.load_state_dict(torch.load(checkpoint))
 
-def tilize(image, tiles):
+    return model.cuda()
+
+def tilize(image, n_tiles):
     width, height = image.size
-    tile_size = width // tiles
+    tile_size = width / n_tiles
     
     tiles = []
-    for y in range(0, height, tile_size):
-        for x in range(0, width, tile_size):
+    for y in np.linspace(0., float(height), n_tiles, endpoint=False):
+        for x in np.linspace(0, float(width), n_tiles, endpoint=False):
             tile = image.crop((x, y, x+tile_size, y+tile_size))
             tiles.append(tile)
     return tiles
+
+@torch.no_grad
+def chunk_call(model, inputs, batchsize=256):
+    outputs = []
+    for i in tqdm(range(0, len(inputs), batchsize)):
+        outputs.append(model(inputs[i:i+batchsize].cuda()).cpu())
+    return torch.cat(outputs)

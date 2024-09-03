@@ -96,7 +96,6 @@ def supress_subsets(masks, n_final_masks=4):
         if ios_matrix[mask1_index, mask2_index] < 0.1:
             break
 
-        # dict_keys(['segmentation', 'area', 'bbox', 'predicted_iou', 'point_coords', 'stability_score', 'crop_box'])
 
         # combine the two dictionaries based on weighted average of area store in mask1_index, delete mask2_index
 
@@ -118,21 +117,22 @@ def suppress_small_masks(masks, area=600):
             i+=1
             continue
         j = i+1
+
         while j < len(masks):
             # check intersection of mask with all bigger masks
             if box_mask_intersection(mask, masks[j]):
                 masks[j] = combine(mask, masks[j])
                 masks.pop(i)
-                i-=1
                 break
             j+=1
-        i+=1
+        if j == len(masks):
+            masks.pop(i)  # if no match found udaa do bc
         
 
 class SAMSegmenter:
     def __init__(self):
-        model_type = "vit_t"
-        sam_checkpoint = "./weights/mobile_sam.pt"
+        model_type = "vit_b"
+        sam_checkpoint = "./weights/sam_vit_b.pth"
 
         mobile_sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
         mobile_sam.to(device=device)
@@ -141,17 +141,18 @@ class SAMSegmenter:
         self.mask_generator = SamAutomaticMaskGenerator(
             mobile_sam,
             points_per_side=16,
-            min_mask_region_area=1024
+            min_mask_region_area=512
         )
 
 
     def segment(self, image):
+
         masks = self.mask_generator.generate(np.array(image))
 
         if len(masks) == 0:
             return [{
                 'segmentation': np.ones((image.size[1], image.size[0]), dtype=bool),
-                'area': image.shape[0] * image.shape[1],
+                'area': image.size[0] * image.size[1],
                 'bbox': [0, 0, image.size[1], image.size[0]],
                 'predicted_iou': -1,
                 'point_coords': [image.size[1]//2, image.size[0]//2],
@@ -160,9 +161,15 @@ class SAMSegmenter:
             }]
         supress_subsets(masks, n_final_masks=5)
 
-        # try and combine all masks smaller than 1% of the image area with bigger masks
-        min_area = (image.size[1]*image.size[0]) * 0.01
+        # try and combine all masks smaller than 2% of the image area with bigger masks
+        min_area = (image.size[1]*image.size[0]) * 0.02
         suppress_small_masks(masks, min_area)
+
+        masks.append({
+            "segmentation": np.ones((image.size[1], image.size[0]), dtype=bool),
+            "area": 1,
+            "bbox": [0, 0, image.size[0], image.size[1]]
+        })
 
         return masks
 
