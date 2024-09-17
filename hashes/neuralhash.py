@@ -10,12 +10,7 @@ seed1 = open("./hashes/neuralhash_128x96_seed1.dat", "rb").read()[128:]
 seed1 = np.frombuffer(seed1, dtype=np.float32)
 seed1 = seed1.reshape([96, 128])
 
-so = onnxruntime.SessionOptions()
-so.log_severity_level = 3
-
 # Load ONNX model
-# session = onnxruntime.InferenceSession("./hashes/model.onnx", so)
-# Global variable for the ONNX session
 session = None
 
 def neuralhash(ims, bits=128, *args, **kwargs):
@@ -39,8 +34,8 @@ def neuralhash(ims, bits=128, *args, **kwargs):
     return hash_bits
 
 
-def initialize_session():
-    global session
-    so = onnxruntime.SessionOptions()
-    so.log_severity_level = 3
-    session = onnxruntime.InferenceSession("./hashes/model.onnx", so)
+# def initialize_session():
+#     global session
+so = onnxruntime.SessionOptions()
+so.log_severity_level = 3
+session = onnxruntime.InferenceSession("./hashes/model.onnx", so)

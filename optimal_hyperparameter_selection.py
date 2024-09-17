@@ -44,14 +44,14 @@ X = []
 y = []
 for sample in samples:
     params = sample["params"]
-    if sample["val_loss"] < 0:
+    if sample["val_loss"] < 0 or sample["val_loss"] > 0.5:
         continue
     X.append([params[field] for field in fields])
     y.append(sample["val_loss"])
 
-X = np.array(X)
+X_orig = np.array(X)
 y = -np.log(np.array(y))
-X = (X - X.mean(axis=0)) / X.std(axis=0)
+X = (X_orig - X_orig.mean(axis=0)) / X_orig.std(axis=0)
 
 model.fit(X, y)
 y_pred = model.predict(X)
@@ -65,4 +65,5 @@ for i, (feature, coef) in enumerate(zip(fields, model.coef_)):
     r_squared_without_feature = r2_score(y, y_pred)
     print(f"{feature}: {coef}")
     print(f"R-squared difference {feature}: {r_squared - r_squared_without_feature}")
+    print("Average:", np.mean(X_orig[:, i]))
     print("#######")

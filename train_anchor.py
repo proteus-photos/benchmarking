@@ -242,16 +242,15 @@ def overlap_loss(out1s, state1s, out2s, state2s):
     return loss
 
 if __name__ == "__main__":
-    
     parser = argparse.ArgumentParser()
     parser.add_argument("--w_coeff", type=float, default=2.0, help="Weight coefficient for the weighted box loss")
-    parser.add_argument("--i_coeff", type=float, default=0.0, help="Weight coefficient for the IOU loss")
+    parser.add_argument("--i_coeff", type=float, default=0.2, help="Weight coefficient for the IOU loss")
     parser.add_argument("--o_coeff", type=float, default=2.0, help="Weight coefficient for the overlap loss")
-    parser.add_argument("--min_margin", type=float, default=0.5, help="Minimum margin for the transform_point function")
-    parser.add_argument("--gamma", type=float, default=0.2, help="Gamma for the box loss function")
+    parser.add_argument("--min_margin", type=float, default=0.4, help="Minimum margin for the transform_point function")
+    parser.add_argument("--gamma", type=float, default=0.4, help="Gamma for the box loss function")
     parser.add_argument("--sharpness", type=float, default=5.0, help="Sharpness for the distance function")
     parser.add_argument("--lr1", type=float, default=4.5, help="Learning rate for the classifier")
-    parser.add_argument("--lr2", type=float, default=3.0, help="Learning rate for the last blocks")
+    parser.add_argument("--lr2", type=float, default=4.0, help="Learning rate for the last blocks")
     parser.add_argument("--id", type=int, default=0, help="ID of the experiment")
 
     args = parser.parse_args()
@@ -312,7 +311,7 @@ if __name__ == "__main__":
     val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, drop_last=False)
 
     # Training loop
-    num_epochs = 60
+    num_epochs = 50
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     print(device)
@@ -388,4 +387,4 @@ if __name__ == "__main__":
     print(f"RETURN_VALUE:{val_loss}", file=sys.stderr)
 
     # Save the model
-    # torch.save(model.state_dict(), 'finetuned_mobilenetv3.pth')
+    torch.save(model.state_dict(), 'finetuned_mobilenetv3.pth')

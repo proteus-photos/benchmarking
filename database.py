@@ -169,7 +169,7 @@ class TileDatabase:
         return return_data
     
     def multi_query(self, images, hasher, anchor_points_list, K_RETRIEVAL=1):
-        return [self.query(images, hasher, anchor_points, K_RETRIEVAL) for image, anchor_points in zip(tqdm(images), anchor_points_list)]
+        return [self.query(image, hasher, anchor_points, K_RETRIEVAL) for image, anchor_points in zip(images, anchor_points_list)]
     
         with Pool(num_workers) as p:
             queries_promise = p.starmap_async(self.query, [(hash, k) for hash in hashes])

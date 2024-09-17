@@ -116,6 +116,6 @@ def tilize(image, n_tiles):
 @torch.no_grad
 def chunk_call(model, inputs, batchsize=256):
     outputs = []
-    for i in tqdm(range(0, len(inputs), batchsize)):
+    for i in range(0, len(inputs), batchsize):
         outputs.append(model(inputs[i:i+batchsize].cuda()).cpu())
     return torch.cat(outputs)

@@ -22,7 +22,7 @@ transformations = ['screenshot'] #, 'double screenshot', 'jpeg', 'crop']
 hash_methods = [neuralhash] # dhash, phash, blockhash, whash
 
 dataset_folder = './dataset/imagenet/images'
-image_files = [f for f in os.listdir(dataset_folder)][:10_000]
+image_files = [f for f in os.listdir(dataset_folder)][:1_000]
 
 N_IMAGE_RETRIEVAL = 5
 
