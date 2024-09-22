@@ -60,7 +60,7 @@ N_IMAGE_RETRIEVAL = 5
 open_image = lambda x: Image.open(x).convert("RGB")
 
 transformations = ['screenshot'] #, 'crop', 'double screenshot', 'jpeg']
-hash_method = neuralhash
+hasher = neuralhash
 
 dataset_folder = './dataset/imagenet/images'
 image_files = [f for f in os.listdir(dataset_folder)][:10_000]
@@ -71,8 +71,8 @@ s = SAMSegmenter()
 os.makedirs("databases", exist_ok=True)
 databases = []
 
-if hash_method.__name__ + ".npy" not in os.listdir("segmented_databases") or args.refresh:
-    print("Creating database for", hash_method.__name__)
+if hasher.__name__ + ".npy" not in os.listdir("segmented_databases") or args.refresh:
+    print("Creating database for", hasher.__name__)
     mask_hashes = []
     image_numbers = []
 
@@ -88,14 +88,14 @@ if hash_method.__name__ + ".npy" not in os.listdir("segmented_databases") or arg
 
     db = Database(
         mask_hashes,
-        storedir=f"segmented_databases/{hash_method.__name__}",
+        storedir=f"segmented_databases/{hasher.__name__}",
         metadata=image_numbers
     )
 
 else:
     db = Database(
         None,
-        storedir=f"segmented_databases/{hash_method.__name__}"
+        storedir=f"segmented_databases/{hasher.__name__}"
     )
 
 n_matches = np.zeros(len(transformations))
@@ -128,5 +128,5 @@ for index, image_file in enumerate(tqdm(image_files)):
     gc.collect()
 
 for j, transformation in enumerate(transformations):
-    print(f'{hash_method.__name__} with {transformation} transformation:', n_matches[j] / len(image_files))
+    print(f'{hasher.__name__} with {transformation} transformation:', n_matches[j] / len(image_files))
 print("#############################################")

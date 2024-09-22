@@ -3,8 +3,11 @@ from PIL import Image
 
 from torchvision.models import (
     mobilenet_v3_small, MobileNet_V3_Small_Weights,
-    mobilenet_v3_large, MobileNet_V3_Large_Weights
+    mobilenet_v3_large, MobileNet_V3_Large_Weights,
 )
+
+from torchvision.models.detection import fasterrcnn_resnet50_fpn_v2
+
 from torch.utils.data import DataLoader, Dataset, random_split
 from torchvision import transforms
 import torchvision
@@ -14,6 +17,40 @@ import torch.nn as nn
 import torch.optim as optim
 import sys
 from tqdm import tqdm
+
+class ResNetModel(nn.Module):
+    def __init__(self):
+        super(ResNetModel, self).__init__()
+        
+        fasterrcnn = fasterrcnn_resnet50_fpn_v2(pretrained=True)
+        
+        self.backbone = fasterrcnn.backbone
+        
+        self.conv_block = nn.Sequential(
+            nn.Conv2d(256, 128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(128, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.AdaptiveAvgPool2d((1, 1))
+        )
+        
+        self.fc1 = nn.Linear(64, 32)
+        self.fc2 = nn.Linear(32, 4)
+        
+    def forward(self, x):
+        features = self.backbone(x)
+        
+        last_feature_map = features['3']
+        
+        x = self.conv_block(last_feature_map)
+        x = x.view(x.size(0), -1)
+        
+        x = torch.relu(self.fc1(x))
+        x = self.fc2(x)
+        
+        return x
 
 X = 0
 Y = 1
@@ -102,6 +139,14 @@ def create_model(checkpoint=None):
 
     return model.cuda()
 
+def create_model_resnet(checkpoint=None):
+    model = ResNetModel()
+
+    if checkpoint is not None:
+        model.load_state_dict(torch.load(checkpoint))
+
+    return model.cuda()
+
 def tilize(image, n_tiles):
     width, height = image.size
     tile_size = width / n_tiles
@@ -112,6 +157,34 @@ def tilize(image, n_tiles):
             tile = image.crop((x, y, x+tile_size, y+tile_size))
             tiles.append(tile)
     return tiles
+
+def tilize_by_anchors(image, n_breaks, anchors):
+    width, height = image.size
+    tile_width  = (anchors[X2] - anchors[X1])/n_breaks
+    tile_height = (anchors[Y2] - anchors[Y1])/n_breaks
+
+    # compute number of grid lines in left and right directions
+    n_max_pos_width = (1 - anchors[X1]) // tile_width
+    n_max_neg_width =  - (anchors[X1] // tile_width)
+    n_values = np.arange(n_max_neg_width, n_max_pos_width + 1)
+    # Compute the corresponding values of x + n * dx
+    width_values = (anchors[X1] + n_values * tile_width) * width
+
+    # compute number of grid lines in up and down directions
+    n_max_pos_height = (1 - anchors[Y1]) // tile_height
+    n_max_neg_height = - (anchors[Y1] // tile_height)
+    n_values = np.arange(n_max_neg_height, n_max_pos_height + 1)
+
+    # Compute the corresponding values of y + n * dy
+    height_values = (anchors[Y1] + n_values * tile_height) * height
+    
+    tile_width *= width
+    tile_height *= height
+    
+    tiles = [image.crop((x, y, x+tile_width, y+tile_height)) for y in height_values[:-1] for x in width_values[:-1]]
+    n_range = (n_max_neg_width, n_max_neg_height, n_max_pos_width, n_max_pos_height) #ltrb
+
+    return tiles, [int(num) for num in n_range]
 
 @torch.no_grad
 def chunk_call(model, inputs, batchsize=256):

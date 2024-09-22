@@ -35,17 +35,17 @@ t = Transformer()
 
 os.makedirs("databases", exist_ok=True)
 databases = []
-for hash_method in hash_methods:
-    if hash_method.__name__ + ".npy" not in os.listdir("databases") or args.refresh:
-        print("Creating database for", hash_method.__name__)
+for hasher in hash_methods:
+    if hasher.__name__ + ".npy" not in os.listdir("databases") or args.refresh:
+        print("Creating database for", hasher.__name__)
         original_hashes = []
         for image_file in tqdm(image_files):
             image = Image.open(os.path.join(dataset_folder, image_file)).convert("RGB")
-            original_hashes.append(hash_method([image])[0])
+            original_hashes.append(hasher([image])[0])
             gc.collect()
-        db = Database(original_hashes, storedir=f"databases/{hash_method.__name__}")
+        db = Database(original_hashes, storedir=f"databases/{hasher.__name__}")
     else:
-        db = Database(None, storedir=f"databases/{hash_method.__name__}")
+        db = Database(None, storedir=f"databases/{hasher.__name__}")
 
     databases.append(db)
 
@@ -56,14 +56,14 @@ for index, image_file in tqdm(enumerate(image_files), total=len(image_files)):
     image = Image.open(os.path.join(dataset_folder, image_file)).convert("RGB")
     for j, transformation in enumerate(transformations):
         transformed_image = t.transform(image, transformation)
-        for i, (hash_method, database) in enumerate(zip(hash_methods, databases)):
-            modified_hash = hash_method([transformed_image])[0]
+        for i, (hasher, database) in enumerate(zip(hash_methods, databases)):
+            modified_hash = hasher([transformed_image])[0]
             result = database.query(modified_hash, k=N_IMAGE_RETRIEVAL)
             if index in [point["index"] for point in result]:
                 n_matches[i, j] += 1
     gc.collect()
 
-for i, (hash_method, database) in enumerate(zip(hash_methods, databases)):
+for i, (hasher, database) in enumerate(zip(hash_methods, databases)):
     for j, transformation in enumerate(transformations):
-        print(f'{hash_method.__name__} with {transformation} transformation:', n_matches[i, j] / len(image_files))
+        print(f'{hasher.__name__} with {transformation} transformation:', n_matches[i, j] / len(image_files))
     print("#############################################")

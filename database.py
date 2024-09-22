@@ -3,9 +3,34 @@ from multiprocessing import Pool
 import os
 import json
 from tqdm import tqdm
+from utils import tilize_by_anchors
+import pickle
+
+def n_range_overlap_slice(n_range1, n_range2):
+    # gives the vertical and horizontal overlap indices, for 2 n_ranges
+    l1, t1, r1, b1 = n_range1
+    l2, t2, r2, b2 = n_range2
+
+    l_max = max(l1, l2)
+    t_max = max(t1, t2)
+    r_min = min(r1, r2)
+    b_min = min(b1, b2)
+
+    return (
+        ((l_max - l1, r_min - l1), (t_max - t1, b_min - t1)),
+        ((l_max - l2, r_min - l2), (t_max - t2, b_min - t2))
+    )
 
 X = 0
 Y = 1
+W = 2
+H = 3
+
+X1 = 0
+Y1 = 1
+X2 = 2
+Y2 = 3
+
 def transform_point(point, anchors1, anchors2):
     # The resulting coordinates will be in the space of anchors2
     x11, y11, x12, y12 = anchors1.T
@@ -46,7 +71,7 @@ class Database:
 
     def query(self, hash, k=1):
         
-        similarities = (hash.reshape(1, -1) == self.hashes).sum(axis=1)
+        similarities = (hash.reshape(1, -1) == self.hashes).mean(axis=1)
 
         inds = np.argpartition(similarities, -k)[-k:] # top k nearest hashes
 
@@ -66,7 +91,7 @@ class Database:
         return return_data
     
 class TileDatabase:
-    def __init__(self, n_tiles, hashes=None, storedir=None, anchors=None, refresh=True):  
+    def __init__(self, n_tiles, hashes=None, storedir=None, anchors=None):  
         self.n_tiles = n_tiles
         self.tile_size = 1 / n_tiles
 
@@ -97,7 +122,6 @@ class TileDatabase:
         self.hashes = self.hashes.reshape(-1, n_tiles, n_tiles, self.hashes.shape[-1])
 
     def query(self, image, hasher, anchor_points, K_RETRIEVAL=1):
-        
         # wrt the db images, what is the coordinates of the common portion?
         left, top = transform_point(
             np.array([0., 0.]),
@@ -157,7 +181,7 @@ class TileDatabase:
             db_tile_hashes = self.hashes[i, tiles_indices[:, 1], tiles_indices[:, 0]]
 
             # avg similarity for each tile
-            similarity = (query_tile_hashes == db_tile_hashes).sum() / len(query_tile_hashes)
+            similarity = (query_tile_hashes == db_tile_hashes).mean()
             similarities.append(similarity)
 
         similarities = np.array(similarities)
@@ -170,9 +194,59 @@ class TileDatabase:
     
     def multi_query(self, images, hasher, anchor_points_list, K_RETRIEVAL=1):
         return [self.query(image, hasher, anchor_points, K_RETRIEVAL) for image, anchor_points in zip(images, anchor_points_list)]
-    
-        with Pool(num_workers) as p:
-            queries_promise = p.starmap_async(self.query, [(hash, k) for hash in hashes])
-            return_data = [points for points in queries_promise.get()]
 
+class TileDatabaseV2:
+    def __init__(self, hashes=None, storedir=None, metadata=None, n_breaks=2):  
+        # the hashes are stored as (n_images, n_tiles (col), n_tiles (row), hash_size)
+        self.n_breaks = n_breaks
+        if hashes is None:
+            if storedir is None:
+                raise ValueError
+            else:
+                with open(storedir+"_hashes.pkl", "rb") as f:
+                    self.hashes = pickle.load(f)
+                with open(storedir+"_metadata.json", "r") as f:
+                    self.metadata = json.load(f)
+        else:
+            self.hashes = hashes
+            self.metadata = metadata
+            if storedir is not None:
+                with open(storedir+"_hashes.pkl", "wb") as f:
+                    pickle.dump(hashes, f)
+                with open(storedir+"_metadata.json", "w") as f:
+                    json.dump(metadata, f)
+
+        self.anchors = self.metadata["anchors"]
+        self.n_ranges = self.metadata["n_ranges"]
+
+
+    def query(self, image, hasher, query_anchor, K_RETRIEVAL=1):
+        query_tiles, query_n_range = tilize_by_anchors(image, self.n_breaks, query_anchor)
+        grid_shape = (query_n_range[Y2] - query_n_range[Y1], query_n_range[X2] - query_n_range[X1])
+        query_tile_hashes = hasher(query_tiles).reshape(*grid_shape, -1)
+
+        nums = query_tile_hashes.reshape(-1, query_tile_hashes.shape[-1]).dot(1 << np.arange(query_tile_hashes.shape[-1])[::-1])
+
+        similarities = []
+        
+        for db_tile_hashes, db_n_range in zip(self.hashes, self.n_ranges):
+            query_overlap, db_overlap = n_range_overlap_slice(query_n_range, db_n_range)
+            query_hashes = query_tile_hashes[query_overlap[Y][0]:query_overlap[Y][1],
+                                             query_overlap[X][0]:query_overlap[X][1]]
+            
+            db_hashes = db_tile_hashes[db_overlap[Y][0]:db_overlap[Y][1],
+                                       db_overlap[X][0]:db_overlap[X][1]]
+            
+            similarity = (query_hashes == db_hashes).mean()
+            similarities.append(similarity)
+
+        similarities = np.array(similarities)
+
+        inds = np.argpartition(similarities, -K_RETRIEVAL)[-K_RETRIEVAL:]
+
+        return_data = [{"index": ind, "score": similarities[ind]} for ind in inds]
+        
         return return_data
+    
+    def multi_query(self, images, hasher, anchor_points_list, K_RETRIEVAL=1):
+        return [self.query(image, hasher, anchor_points, K_RETRIEVAL) for image, anchor_points in zip(images, anchor_points_list)]
