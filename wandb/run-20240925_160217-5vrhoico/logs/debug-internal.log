@@ -1,0 +1,19 @@
+{"time":"2024-09-25T16:02:17.064401974Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-09-25T16:02:17.064418126Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20240925_160217-5vrhoico/logs/debug-core.log"}
+{"time":"2024-09-25T16:02:17.064465544Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-09-25T16:02:17.064469804Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20240925_160217-5vrhoico/logs/debug-core.log"}
+{"time":"2024-09-25T16:02:17.06523731Z","level":"INFO","msg":"created new stream","id":"5vrhoico"}
+{"time":"2024-09-25T16:02:17.065256738Z","level":"INFO","msg":"stream: started","id":"5vrhoico"}
+{"time":"2024-09-25T16:02:17.065274611Z","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"5vrhoico"}}
+{"time":"2024-09-25T16:02:17.065274585Z","level":"INFO","msg":"sender: started","stream_id":{"value":"5vrhoico"}}
+{"time":"2024-09-25T16:02:17.065292942Z","level":"INFO","msg":"handler: started","stream_id":{"value":"5vrhoico"}}
+{"time":"2024-09-25T16:02:17.423993242Z","level":"INFO","msg":"wandb-core","!BADKEY":null}
+{"time":"2024-09-25T16:02:17.425214247Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-09-25T16:09:47.537221722Z","level":"INFO","msg":"api: retrying HTTP request, no error or response"}
+{"time":"2024-09-25T16:12:41.400832858Z","level":"INFO","msg":"stream: closing","id":"5vrhoico"}
+{"time":"2024-09-25T16:12:41.400864138Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-09-25T16:12:41.40102938Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-09-25T16:12:43.602748671Z","level":"INFO","msg":"handler: closed","stream_id":{"value":"5vrhoico"}}
+{"time":"2024-09-25T16:12:43.602808643Z","level":"INFO","msg":"sender: closed","stream_id":{"value":"5vrhoico"}}
+{"time":"2024-09-25T16:12:43.602807492Z","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"5vrhoico"}}
+{"time":"2024-09-25T16:12:43.602908892Z","level":"INFO","msg":"stream: closed","id":"5vrhoico"}

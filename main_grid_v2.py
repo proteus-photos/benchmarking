@@ -125,6 +125,8 @@ with Pool(processes=5,) as p: #  initializer=initialize_session
 
 results = [point for points in queries for point in points]
 
+
+### Evaluation with failures
 n_matches = 0
 for index, result in enumerate(results):
     match = index in [point["index"] for point in result]
@@ -133,9 +135,7 @@ for index, result in enumerate(results):
     else:
         print("failed at", index, "with score", result)
 
-n_matches = sum([int(index in [point["index"] for point in result]) for index, result in enumerate(results)])
-# for index, result in enumerate(results):
-#     n_matches += int(index in [point["index"] for point in result])
+# n_matches = sum([int(index in [point["index"] for point in result]) for index, result in enumerate(results)])
 
 print(f'{hasher.__name__} with {transformation} transformation:', n_matches / len(image_files))
 print("#############################################")

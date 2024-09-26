@@ -253,7 +253,26 @@ class TileDatabaseV2:
         return return_data
     
     def similarity_score(self, image, hasher, query_anchor, index):
-        pass
+        query_tiles, query_n_range = tilize_by_anchors(image, self.n_breaks, query_anchor)
+        grid_shape = (query_n_range[Y2] - query_n_range[Y1], query_n_range[X2] - query_n_range[X1])
+        query_tile_hashes = hasher(query_tiles).reshape(*grid_shape, -1)
+
+        db_tile_hashes = self.hashes[index]
+        db_n_range = self.n_ranges[index]
+
+        query_overlap, db_overlap = n_range_overlap_slice(query_n_range, db_n_range)
+        query_hashes = query_tile_hashes[query_overlap[Y][0]:query_overlap[Y][1],
+                                         query_overlap[X][0]:query_overlap[X][1]]
+        db_hashes = db_tile_hashes[db_overlap[Y][0]:db_overlap[Y][1],
+                                    db_overlap[X][0]:db_overlap[X][1]]
+        
+        similarity_grid = (query_hashes == db_hashes).mean(2)
+
+        return_data = {
+            "similarity_grid": similarity_grid,
+            "score": similarity_grid.mean()
+        }
+        return return_data
     
     def multi_query(self, images, hasher, anchor_points_list, K_RETRIEVAL=1):
         return [self.query(image, hasher, anchor_points, K_RETRIEVAL) for image, anchor_points in zip(images, anchor_points_list)]
