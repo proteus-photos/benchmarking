@@ -9,7 +9,8 @@ from torchvision.models import (
 from torchvision.models.detection import fasterrcnn_resnet50_fpn_v2
 
 from torch.utils.data import DataLoader, Dataset, random_split
-from torchvision import transforms
+from torchvision.transforms import v2 as transforms
+
 import torchvision
 from torchvision.utils import draw_bounding_boxes, draw_keypoints
 import torch
@@ -27,31 +28,26 @@ class ResNetModel(nn.Module):
         self.backbone = fasterrcnn.backbone
         
         self.conv_block = nn.Sequential(
-            nn.Conv2d(256, 128, kernel_size=3, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(128, 64, kernel_size=3, padding=1),
+            nn.Conv2d(256, 64, kernel_size=3, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.AdaptiveAvgPool2d((1, 1))
         )
         
-        self.fc1 = nn.Linear(64, 32)
-        self.fc2 = nn.Linear(32, 4)
+        self.fc1 = nn.Linear(64, 16)
+        self.fc2 = nn.Linear(16, 4)
         
     def forward(self, x):
         features = self.backbone(x)
-        
-        last_feature_map = features['3']
-        
-        x = self.conv_block(last_feature_map)
+                
+        x = self.conv_block(features['3'])
         x = x.view(x.size(0), -1)
         
         x = torch.relu(self.fc1(x))
-        x = self.fc2(x)
+        x = torch.relu(self.fc2(x))
         
         return x
-
+    
 X = 0
 Y = 1
 W = 2
@@ -65,33 +61,59 @@ Y2 = 3
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
-inverse_transform = transforms.Compose([
+random_transform = transforms.Compose([
+    # transform,
+    transforms.GaussianNoise(0., 0.05),
+    # transforms.ElasticTransform(alpha=10., sigma=10.),
+    transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),
+])
+
+normalize = transforms.Compose([
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
+
+
+inverse_normalize = transforms.Compose([
     transforms.Normalize(mean=[0., 0., 0.], std=[1/0.229, 1/0.224, 1/0.225]),
     transforms.Normalize(mean=[-0.485, -0.456, -0.406], std=[1., 1., 1.]),
 ])
 
-def reparametricize(outs, MIN_MARGIN):
+def reparametricize(outs, MIN_MARGIN=None):
     # converts two floats (0, inf) to left margin and right margin
     # s.t. second point always >= first point
 
-    # MIN_MARGIN = 0.3  # actual minimum distance = MIN_MARGIN / (2 + MIN_MARGIN)
+##############################
+    # outs = torch.sigmoid(outs, dim=1)
 
-    x1s, y1s, x2s, y2s = outs[:, X1], outs[:, Y1], outs[:, X2], outs[:, Y2]
-    normalized = (
-        x1s / (x1s + x2s + MIN_MARGIN),
-        y1s / (y1s + y2s + MIN_MARGIN), 
-        (x1s + MIN_MARGIN) / (x1s + x2s + MIN_MARGIN),
-        (y1s + MIN_MARGIN) / (y1s + y2s + MIN_MARGIN)
-    )
+    # x1s = (x1s < x2s).float() * x1s + (x1s >= x2s).float() * x2s
+    # y1s = (y1s < y2s).float() * y1s + (y1s >= y2s).float() * y2s
+    # x2s = (x1s < x2s).float() * x2s + (x1s >= x2s).float() * x1s
+    # y2s = (y1s < y2s).float() * y2s + (y1s >= y2s).float() * y1s
 
-    if torch.all(normalized[0] < 1e-5) and torch.all(torch.all(normalized[1] < 1e-5)) and torch.all(normalized[2] > 1-1e-5) and torch.all(normalized[3] > 1-1e-5):
-        print(f"RETURN_VALUE:{-1}", file=sys.stderr)
-        exit()
+    # return torch.stack([x1s, y1s, x2s, y2s], dim=1)
+###############################
+    if MIN_MARGIN is None:
+        x1, y1, x2, y2, x3, y3 = outs.unbind(dim=1)
+        x1, x2, x3 = torch.nn.functional.softmax(torch.stack([x1, x2, x3], dim=1), dim=1).unbind(dim=1)
+        y1, y2, y3 = torch.nn.functional.softmax(torch.stack([y1, y2, y3], dim=1), dim=1).unbind(dim=1)
+
+        x_l, x_r = x1, 1 - x3
+        y_t, y_b = y1, 1 - x3
+
+        return torch.stack([x_l, y_t, x_r, y_b], dim=1)
+    else:
+        x1s, y1s, x2s, y2s = outs.unbind(dim=1)
+
+        normalized = (
+            x1s / (x1s + x2s + MIN_MARGIN),
+            y1s / (y1s + y2s + MIN_MARGIN), 
+            (x1s + MIN_MARGIN) / (x1s + x2s + MIN_MARGIN),
+            (y1s + MIN_MARGIN) / (y1s + y2s + MIN_MARGIN)
+        )
         
-    return torch.stack(normalized, dim=1)
+        return torch.stack(normalized, dim=1)
 
 def match(original_hash, modified_hash):
     # difference = original_hash ^ modified_hash
@@ -123,24 +145,31 @@ def clip_to_image(box, width, height):
 
     return [round(x), round(y), round(w), round(h)]
 
-def create_model(checkpoint=None):
-    model = mobilenet_v3_large(weights=MobileNet_V3_Large_Weights.DEFAULT)
+def create_model(checkpoint=None, backbone="mobilenet"):
+    if backbone == "mobilenet":
+        model = mobilenet_v3_large(weights=MobileNet_V3_Large_Weights.DEFAULT)
 
-    model.classifier = nn.Sequential(
-        nn.Linear(model.classifier[0].in_features, 1280),
-        nn.Hardswish(),
-        # nn.Dropout(p=0.2, inplace=True),
-        nn.Linear(1280, 4),
-        nn.ReLU()
-    )
+        model.classifier = nn.Sequential(
+            nn.Linear(model.classifier[0].in_features, 1280),
+            nn.Hardswish(),
+            # nn.Dropout(p=0.2, inplace=True),
+            nn.Linear(1280, 6),
+            # nn.ReLU()
+        )
+    elif backbone == "mobilenet_old":
+        model = mobilenet_v3_large(weights=MobileNet_V3_Large_Weights.DEFAULT)
 
-    if checkpoint is not None:
-        model.load_state_dict(torch.load(checkpoint))
-
-    return model.cuda()
-
-def create_model_resnet(checkpoint=None):
-    model = ResNetModel()
+        model.classifier = nn.Sequential(
+            nn.Linear(model.classifier[0].in_features, 1280),
+            nn.Hardswish(),
+            # nn.Dropout(p=0.2, inplace=True),
+            nn.Linear(1280, 4),
+            # nn.ReLU()
+        )
+    elif backbone == "resnet":
+        model = ResNetModel()
+    else:
+        raise ValueError("Invalid backbone")
 
     if checkpoint is not None:
         model.load_state_dict(torch.load(checkpoint))

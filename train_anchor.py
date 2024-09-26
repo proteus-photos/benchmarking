@@ -19,7 +19,8 @@ from PIL import Image
 import numpy as np
 import argparse
 import sys
-from utils import transform, inverse_transform, reparametricize
+from utils import transform, inverse_normalize, reparametricize, create_model, random_transform, normalize
+import wandb
 
 torch.backends.cudnn.benchmark = True
 torch.manual_seed(42)
@@ -54,7 +55,7 @@ BATCH_SIZE = 128
 IM_SIZE = 224
 
 def myplot(images, output1s, state1s, output2s, state2s, epoch):
-    images = inverse_transform(images)
+    images = inverse_normalize(images)
     x1s, y1s, x2s, y2s = original_coordinates(output1s, state1s)
     im1coordinates1 = torch.round(x1s * IM_SIZE).long(), torch.round(y1s * IM_SIZE).long()
     im1coordinates2 = torch.round(x2s * IM_SIZE).long(), torch.round(y2s * IM_SIZE).long()
@@ -105,15 +106,16 @@ def myplot(images, output1s, state1s, output2s, state2s, epoch):
 
 class CustomDataset(Dataset):
     def __init__(self, image_directory, transform=None):
-        self.image_paths = [os.path.join(image_directory, x) for x in os.listdir(image_directory)]
+        self.image_paths = [os.path.join(image_directory, x) for x in os.listdir(image_directory)[:1000]]
         self.transform = transform
 
     def __len__(self):
         return len(self.image_paths)
+    
+    # MAX CROP SHOULD BE 0.3 AND COMPRESS SHOULD BE 0.5!!!
+    def get_random_transform(self, max_crop=0.2):
 
-    def get_random_transform(self, max_crop=0.3):
-
-        compress = rand_uniform(0, 1) < 0.5  # 50% chance of compressing
+        compress = rand_uniform(0, 1) < 0.1  # 50% chance of compressing
 
         left = rand_uniform(0, max_crop)
         top = rand_uniform(0, max_crop)
@@ -220,10 +222,10 @@ def overlap_loss(out1s, state1s, out2s, state2s):
     target_right = (state1s[:, RIGHT] - state2s[:, LEFT]) / (state2s[:, RIGHT] - state2s[:, LEFT])
     target_bottom = (state1s[:, BOTTOM] - state2s[:, TOP]) / (state2s[:, BOTTOM] - state2s[:, TOP])
 
-    loss += torch.abs(left - target_left).mean() + \
-            torch.abs(top - target_top).mean() +  \
-            torch.abs(right - target_right).mean() + \
-            torch.abs(bottom - target_bottom).mean()
+    loss += torch.square(left - target_left).mean() + \
+            torch.square(top - target_top).mean() +  \
+            torch.square(right - target_right).mean() + \
+            torch.square(bottom - target_bottom).mean()
 
     # then calculate loss of 2nd image transformed to 1st image space
     left, top = transform_point((0,0), out2s, out1s)
@@ -234,19 +236,18 @@ def overlap_loss(out1s, state1s, out2s, state2s):
     target_right = (state2s[:, RIGHT] - state1s[:, LEFT]) / (state1s[:, RIGHT] - state1s[:, LEFT])
     target_bottom = (state2s[:, BOTTOM] - state1s[:, TOP]) / (state1s[:, BOTTOM] - state1s[:, TOP])
 
-    loss += torch.abs(left - target_left).mean() + \
-            torch.abs(top - target_top).mean() + \
-            torch.abs(right - target_right).mean() + \
-            torch.abs(bottom - target_bottom).mean()
+    loss += torch.square(left - target_left).mean() + \
+            torch.square(top - target_top).mean() + \
+            torch.square(right - target_right).mean() + \
+            torch.square(bottom - target_bottom).mean()
     
     return loss
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--w_coeff", type=float, default=2.0, help="Weight coefficient for the weighted box loss")
+    parser.add_argument("--w_coeff", type=float, default=4.0, help="Weight coefficient for the weighted box loss")
     parser.add_argument("--i_coeff", type=float, default=0.2, help="Weight coefficient for the IOU loss")
     parser.add_argument("--o_coeff", type=float, default=2.0, help="Weight coefficient for the overlap loss")
-    parser.add_argument("--min_margin", type=float, default=0.4, help="Minimum margin for the transform_point function")
     parser.add_argument("--gamma", type=float, default=0.4, help="Gamma for the box loss function")
     parser.add_argument("--sharpness", type=float, default=5.0, help="Sharpness for the distance function")
     parser.add_argument("--lr1", type=float, default=4.5, help="Learning rate for the classifier")
@@ -262,36 +263,30 @@ if __name__ == "__main__":
     lr1 = 10**(-args.lr1)
     lr2 = 10**(-args.lr2)
     
-    MIN_MARGIN = args.min_margin
     GAMMA = args.gamma
     SHARPNESS = args.sharpness
 
-    model = mobilenet_v3_large(weights=MobileNet_V3_Large_Weights.DEFAULT)
+    wandb.login()
+    run = wandb.init(project=f"standard LR", config=args)
 
-    model.classifier = nn.Sequential(
-        nn.Linear(model.classifier[0].in_features, 1280),
-        nn.Hardswish(),
-        # nn.Dropout(p=0.2, inplace=True),
-        nn.Linear(1280, 4),
-        nn.ReLU()
-    )
+    model = create_model(checkpoint=None, backbone="mobilenet")
 
     # model.load_state_dict(torch.load('finetuned_mobilenetv3.pth'))
 
     classifier_params = []
     last_blocks_params = []
-
     for name, param in model.named_parameters():
+        # print(name)
         # param.requires_grad = True
 
-        if "classifier" in name:
+        # mobilenet                    resnet               resnet
+        if "classifier" in name or "conv_block" in name or "fc" in name:
             classifier_params.append(param)
             param.requires_grad = True
-            # print(param.shape, name)
-        elif any("features."+str(x) in name for x in range(9, 17)):
+        # mobilenet                                                    resnet
+        elif any("features."+str(x) in name for x in range(9, 17)) or "fpn" in name:
             last_blocks_params.append(param)
             param.requires_grad = True
-            # print(param.shape, name)
         else:
             param.requires_grad = False
 
@@ -303,7 +298,7 @@ if __name__ == "__main__":
 
     dataset = CustomDataset("./dataset/imagenet/images", transform=transform)
 
-    train_size = int(0.9 * len(dataset))
+    train_size = int(0.8 * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
@@ -311,7 +306,7 @@ if __name__ == "__main__":
     val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, drop_last=False)
 
     # Training loop
-    num_epochs = 50
+    num_epochs = 100
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     print(device)
@@ -323,52 +318,55 @@ if __name__ == "__main__":
     #     start_epoch = checkpoint['epoch']
     #     print(f"Checkpoint loaded. Starting from epoch {start_epoch+1}.")
     # else:
+
     start_epoch = 0
     #     print("No checkpoint found. Starting from scratch.")
     for epoch in range(start_epoch, num_epochs):
         model.train()
         train_loss = 0.0
         for step_no, (images, image1s, state1s, image2s, state2s) in enumerate(train_loader):
-            image1s = image1s.to(device)
+            image1s = normalize((image1s)).to(device)
             state1s = torch.stack(state1s, dim=1).to(device)
 
-            image2s = image2s.to(device)
+            image2s = normalize((image2s)).to(device)
             state2s = torch.stack(state2s, dim=1).to(device)
             
             optimizer.zero_grad()
 
             output1s = model(image1s)
-            output1s = reparametricize(output1s, MIN_MARGIN)
+            output1s = reparametricize(output1s)
             output2s = model(image2s)
-            output2s = reparametricize(output2s, MIN_MARGIN)
+            output2s = reparametricize(output2s)
             
             loss = w_coeff*weighted_box_loss(output1s, state1s, output2s, state2s) + o_coeff*overlap_loss(output1s, state1s, output2s, state2s) + i_coeff*iou_loss(output1s, state1s, output2s, state2s)
 
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
             optimizer.step()
             
             train_loss += loss.item()
-            if (step_no % 40 == 0):
+            if (step_no % 80 == 0):
                 print(f"Step [{step_no+1}/{len(train_loader)}], Train Loss: {train_loss/(step_no+1):.6f}")
             
         train_loss /= len(train_loader)
-        
+        myplot(normalize(random_transform(images)), output1s, state1s, output2s, state2s, args.id)
+
         model.eval()
         val_loss = 0.0
         with torch.no_grad():
             for images, image1s, state1s, image2s, state2s in val_loader:
-                image1s = image1s.to(device)
+                image1s = normalize(image1s).to(device)
                 state1s = torch.stack(state1s, dim=1).to(device)
 
-                image2s = image2s.to(device)
+                image2s = normalize(image2s).to(device)
                 state2s = torch.stack(state2s, dim=1).to(device)
                 
                 optimizer.zero_grad()
 
                 output1s = model(image1s)
-                output1s = reparametricize(output1s, MIN_MARGIN)
+                output1s = reparametricize(output1s)
                 output2s = model(image2s)
-                output2s = reparametricize(output2s, MIN_MARGIN)
+                output2s = reparametricize(output2s)
 
                 loss = overlap_loss(output1s, state1s, output2s, state2s)            
                 val_loss += loss.item()
@@ -380,11 +378,17 @@ if __name__ == "__main__":
         #     'model_state_dict': model.state_dict(),
         #     'optimizer_state_dict': optimizer.state_dict(),
         # }, 'checkpoint.pth')
-
+        wandb.log(
+            {
+                "epoch": epoch,
+                "train_loss": train_loss,
+                "val_loss": val_loss,
+            }
+        )
         print(f"Epoch [{epoch+1}/{num_epochs}], Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}")
-        myplot(images, output1s, state1s, output2s, state2s, args.id)
+        # myplot(normalize(images), output1s, state1s, output2s, state2s, args.id)
 
     print(f"RETURN_VALUE:{val_loss}", file=sys.stderr)
 
     # Save the model
-    torch.save(model.state_dict(), 'finetuned_mobilenetv3.pth')
+    # torch.save(model.state_dict(), 'finetuned_mobilenetv3.pth')

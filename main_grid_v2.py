@@ -51,7 +51,7 @@ transformation = 'screenshot' #, 'double screenshot', 'jpeg', 'crop']
 hasher = neuralhash # dhash, phash, blockhash, whash
 
 dataset_folder = './dataset/imagenet/images'
-image_files = [f for f in os.listdir(dataset_folder)][:10_000]
+image_files = [f for f in os.listdir(dataset_folder)][:1_000]
 
 N_IMAGE_RETRIEVAL = 5
 N_BREAKS = 2
@@ -62,7 +62,7 @@ parser.add_argument('-r', '--refresh', action='store_true')
 args = parser.parse_args()
 
 t = Transformer()
-model = create_model("finetuned_mobilenetv3.pth")
+model = create_model("finetuned_mobilenetv3.pth", backbone="mobilenet_old")
 model.eval()
 images = [copy.deepcopy(Image.open(os.path.join(dataset_folder, image_file)).convert("RGB")) for image_file in image_files]
 

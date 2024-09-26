@@ -220,14 +220,13 @@ class TileDatabaseV2:
         self.n_ranges = self.metadata["n_ranges"]
 
 
-    def query(self, image, hasher, query_anchor, K_RETRIEVAL=1):
+    def query(self, image, hasher, query_anchor, K_RETRIEVAL=1, index=None):
         query_tiles, query_n_range = tilize_by_anchors(image, self.n_breaks, query_anchor)
         grid_shape = (query_n_range[Y2] - query_n_range[Y1], query_n_range[X2] - query_n_range[X1])
         query_tile_hashes = hasher(query_tiles).reshape(*grid_shape, -1)
 
-        nums = query_tile_hashes.reshape(-1, query_tile_hashes.shape[-1]).dot(1 << np.arange(query_tile_hashes.shape[-1])[::-1])
-
         similarities = []
+        similarity_grids = []
         
         for db_tile_hashes, db_n_range in zip(self.hashes, self.n_ranges):
             query_overlap, db_overlap = n_range_overlap_slice(query_n_range, db_n_range)
@@ -237,16 +236,24 @@ class TileDatabaseV2:
             db_hashes = db_tile_hashes[db_overlap[Y][0]:db_overlap[Y][1],
                                        db_overlap[X][0]:db_overlap[X][1]]
             
-            similarity = (query_hashes == db_hashes).mean()
-            similarities.append(similarity)
+            similarity_grid = (query_hashes == db_hashes).mean(2)
+            similarity = similarity_grid.mean()
 
+            similarity_grids.append(similarity_grid)
+            similarities.append(similarity)
+            
         similarities = np.array(similarities)
 
         inds = np.argpartition(similarities, -K_RETRIEVAL)[-K_RETRIEVAL:]
 
-        return_data = [{"index": ind, "score": similarities[ind]} for ind in inds]
-        
+        return_data = {
+            "matches": [{"index": ind, "score": similarities[ind], "similarity_grid": similarity_grids[ind]} for ind in inds],
+            "true_score": similarities[index] if index is not None else None
+        }
         return return_data
+    
+    def similarity_score(self, image, hasher, query_anchor, index):
+        pass
     
     def multi_query(self, images, hasher, anchor_points_list, K_RETRIEVAL=1):
         return [self.query(image, hasher, anchor_points, K_RETRIEVAL) for image, anchor_points in zip(images, anchor_points_list)]

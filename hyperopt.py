@@ -7,14 +7,14 @@ import sys
 
 # Define the ranges for each hyperparameter
 param_ranges = {
-    "w_coeff": (0, 2.0),
-    "i_coeff": (0, 2.0),
-    "o_coeff": (0, 2.0),
-    "min_margin": (0.1, 0.5),
-    "gamma": (0.05, 0.8),
-    "sharpness": (0.5, 5.0),
-    "lr1": (3, 5),
-    "lr2": (4, 6),
+    # "w_coeff": (0, 2.0),
+    # "i_coeff": (0, 2.0),
+    # "o_coeff": (0, 2.0),
+    # "min_margin": (0.1, 0.5),
+    # "gamma": (0.05, 0.8),
+    # "sharpness": (0.5, 5.0),
+    "lr1": (3, 6),
+    "lr2": (3, 6),
 }
 
 # Number of random trials
@@ -22,7 +22,7 @@ num_trials = int(1e9)
 
 # Function to extract validation loss from the script output
 def extract_validation_loss(output):
-    return float(output.strip().replace("RETURN_VALUE:", ""))
+    return float(output.split()[-1].strip().replace("RETURN_VALUE:", "").strip())
 
 import random
 import json
@@ -76,7 +76,7 @@ results = []
 for trial in range(num_trials):
     # Sample random values for each hyperparameter
     params = {
-        param: round(random.uniform(range_min, range_max), 3)
+        param: random.uniform(range_min, range_max)
         for param, (range_min, range_max) in param_ranges.items()
     }
     
@@ -93,13 +93,10 @@ for trial in range(num_trials):
 
     output_file = os.path.join("logs/", f"trial_{trial+1}_output.txt")
     
-    # Run the training script and capture its output
     output = run_script_with_live_output(cmd, output_file)
     
-    # Extract the validation loss from the output
     val_loss = extract_validation_loss(output)
     
-    # Store the results
     results.append({"params": params, "val_loss": val_loss})
     
     print(f"Trial {trial + 1}/{num_trials} completed. Validation Loss: {val_loss}")
