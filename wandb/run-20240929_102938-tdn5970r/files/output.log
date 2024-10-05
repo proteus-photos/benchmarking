@@ -1,0 +1,202 @@
+cuda
+Step [1/7], Train Loss: 1.695764
+Epoch [1/100], Train Loss: 15.354465, Val Loss: 0.138988
+Step [1/7], Train Loss: 1.687605
+Epoch [2/100], Train Loss: 1.461653, Val Loss: 0.177700
+Step [1/7], Train Loss: 1.451517
+Epoch [3/100], Train Loss: 1.321919, Val Loss: 0.185541
+Step [1/7], Train Loss: 1.367115
+Epoch [4/100], Train Loss: 1.090076, Val Loss: 0.144173
+Step [1/7], Train Loss: 1.232145
+Epoch [5/100], Train Loss: 1.139175, Val Loss: 0.188945
+Step [1/7], Train Loss: 1.044061
+Epoch [6/100], Train Loss: 0.997976, Val Loss: 0.401514
+Step [1/7], Train Loss: 0.997509
+Epoch [7/100], Train Loss: 0.985912, Val Loss: 0.145611
+Step [1/7], Train Loss: 1.082202
+Epoch [8/100], Train Loss: 0.966107, Val Loss: 0.081077
+Step [1/7], Train Loss: 1.044331
+Epoch [9/100], Train Loss: 0.948323, Val Loss: 0.093010
+Step [1/7], Train Loss: 0.943561
+Epoch [10/100], Train Loss: 0.882368, Val Loss: 0.084986
+Step [1/7], Train Loss: 1.047665
+Epoch [11/100], Train Loss: 0.913673, Val Loss: 0.070760
+Step [1/7], Train Loss: 0.848299
+Epoch [12/100], Train Loss: 0.826152, Val Loss: 0.072502
+Step [1/7], Train Loss: 1.000499
+Epoch [13/100], Train Loss: 0.817415, Val Loss: 0.071516
+Step [1/7], Train Loss: 0.916609
+Epoch [14/100], Train Loss: 0.795868, Val Loss: 0.084288
+Step [1/7], Train Loss: 0.863270
+Epoch [15/100], Train Loss: 0.783840, Val Loss: 0.074441
+Step [1/7], Train Loss: 0.852525
+Epoch [16/100], Train Loss: 0.790007, Val Loss: 0.065002
+Step [1/7], Train Loss: 0.804887
+Epoch [17/100], Train Loss: 0.756864, Val Loss: 0.060189
+Step [1/7], Train Loss: 0.710016
+Epoch [18/100], Train Loss: 0.735075, Val Loss: 0.060501
+Step [1/7], Train Loss: 0.895695
+Epoch [19/100], Train Loss: 0.782575, Val Loss: 0.062543
+Step [1/7], Train Loss: 0.749920
+Epoch [20/100], Train Loss: 0.732142, Val Loss: 0.056454
+Step [1/7], Train Loss: 0.778507
+Epoch [21/100], Train Loss: 0.705532, Val Loss: 0.066611
+Step [1/7], Train Loss: 0.684229
+Epoch [22/100], Train Loss: 0.652862, Val Loss: 0.057944
+Step [1/7], Train Loss: 0.711528
+Epoch [23/100], Train Loss: 0.748236, Val Loss: 0.061975
+Step [1/7], Train Loss: 0.704215
+Epoch [24/100], Train Loss: 0.697675, Val Loss: 0.061129
+Step [1/7], Train Loss: 0.708293
+Epoch [25/100], Train Loss: 0.677953, Val Loss: 0.055945
+Step [1/7], Train Loss: 0.825007
+Epoch [26/100], Train Loss: 0.672817, Val Loss: 0.052668
+Step [1/7], Train Loss: 0.788667
+Epoch [27/100], Train Loss: 0.755639, Val Loss: 0.067054
+Step [1/7], Train Loss: 0.801725
+Epoch [28/100], Train Loss: 0.680645, Val Loss: 0.060267
+Step [1/7], Train Loss: 0.689729
+Epoch [29/100], Train Loss: 0.713297, Val Loss: 0.060815
+Step [1/7], Train Loss: 0.676410
+Epoch [30/100], Train Loss: 0.644985, Val Loss: 0.060522
+Step [1/7], Train Loss: 0.722359
+Epoch [31/100], Train Loss: 0.643503, Val Loss: 0.069897
+Step [1/7], Train Loss: 0.728612
+Epoch [32/100], Train Loss: 0.688005, Val Loss: 0.059471
+Step [1/7], Train Loss: 0.701731
+Epoch [33/100], Train Loss: 0.652824, Val Loss: 0.061284
+Step [1/7], Train Loss: 0.627864
+Epoch [34/100], Train Loss: 0.629387, Val Loss: 0.066640
+Step [1/7], Train Loss: 0.593716
+Epoch [35/100], Train Loss: 0.599566, Val Loss: 0.055818
+Step [1/7], Train Loss: 0.679710
+Epoch [36/100], Train Loss: 0.682700, Val Loss: 0.060257
+Step [1/7], Train Loss: 0.691148
+Epoch [37/100], Train Loss: 0.626034, Val Loss: 0.059584
+Step [1/7], Train Loss: 0.646405
+Epoch [38/100], Train Loss: 0.598522, Val Loss: 0.054728
+Step [1/7], Train Loss: 0.699285
+Epoch [39/100], Train Loss: 0.609285, Val Loss: 0.057328
+Step [1/7], Train Loss: 0.538154
+Epoch [40/100], Train Loss: 0.603335, Val Loss: 0.058594
+Step [1/7], Train Loss: 0.665977
+Epoch [41/100], Train Loss: 0.591989, Val Loss: 0.061953
+Step [1/7], Train Loss: 0.582271
+Epoch [42/100], Train Loss: 0.573780, Val Loss: 0.052996
+Step [1/7], Train Loss: 0.659570
+Epoch [43/100], Train Loss: 0.574407, Val Loss: 0.059545
+Step [1/7], Train Loss: 0.587069
+Epoch [44/100], Train Loss: 0.622826, Val Loss: 0.050204
+Step [1/7], Train Loss: 0.613212
+Epoch [45/100], Train Loss: 0.554998, Val Loss: 0.048753
+Step [1/7], Train Loss: 0.617220
+Epoch [46/100], Train Loss: 0.604421, Val Loss: 0.055474
+Step [1/7], Train Loss: 0.541573
+Epoch [47/100], Train Loss: 0.590792, Val Loss: 0.061468
+Step [1/7], Train Loss: 0.645870
+Epoch [48/100], Train Loss: 0.579720, Val Loss: 0.063710
+Step [1/7], Train Loss: 0.617163
+Epoch [49/100], Train Loss: 0.596857, Val Loss: 0.054373
+Step [1/7], Train Loss: 0.607173
+Epoch [50/100], Train Loss: 0.590980, Val Loss: 0.061375
+Step [1/7], Train Loss: 0.596990
+Epoch [51/100], Train Loss: 0.619476, Val Loss: 0.061523
+Step [1/7], Train Loss: 0.596464
+Epoch [52/100], Train Loss: 0.573763, Val Loss: 0.057596
+Step [1/7], Train Loss: 0.571951
+Epoch [53/100], Train Loss: 0.580620, Val Loss: 0.056917
+Step [1/7], Train Loss: 0.530329
+Epoch [54/100], Train Loss: 0.528081, Val Loss: 0.062113
+Step [1/7], Train Loss: 0.602019
+Epoch [55/100], Train Loss: 0.605384, Val Loss: 0.056630
+Step [1/7], Train Loss: 0.638102
+Epoch [56/100], Train Loss: 0.576407, Val Loss: 0.062336
+Step [1/7], Train Loss: 0.628317
+Epoch [57/100], Train Loss: 0.557173, Val Loss: 0.049047
+Step [1/7], Train Loss: 0.603285
+Epoch [58/100], Train Loss: 0.560218, Val Loss: 0.062074
+Step [1/7], Train Loss: 0.631771
+Epoch [59/100], Train Loss: 0.588487, Val Loss: 0.055887
+Step [1/7], Train Loss: 0.589496
+Epoch [60/100], Train Loss: 0.555184, Val Loss: 0.055870
+Step [1/7], Train Loss: 0.669533
+Epoch [61/100], Train Loss: 0.566364, Val Loss: 0.062723
+Step [1/7], Train Loss: 0.524112
+Epoch [62/100], Train Loss: 0.516446, Val Loss: 0.054788
+Step [1/7], Train Loss: 0.536460
+Epoch [63/100], Train Loss: 0.545368, Val Loss: 0.055413
+Step [1/7], Train Loss: 0.536247
+Epoch [64/100], Train Loss: 0.523716, Val Loss: 0.050852
+Step [1/7], Train Loss: 0.544293
+Epoch [65/100], Train Loss: 0.525694, Val Loss: 0.055488
+Step [1/7], Train Loss: 0.506558
+Epoch [66/100], Train Loss: 0.543064, Val Loss: 0.055990
+Step [1/7], Train Loss: 0.454163
+Epoch [67/100], Train Loss: 0.533205, Val Loss: 0.057189
+Step [1/7], Train Loss: 0.572665
+Epoch [68/100], Train Loss: 0.539767, Val Loss: 0.053364
+Step [1/7], Train Loss: 0.491401
+Epoch [69/100], Train Loss: 0.515682, Val Loss: 0.052213
+Step [1/7], Train Loss: 0.521338
+Epoch [70/100], Train Loss: 0.500435, Val Loss: 0.056984
+Step [1/7], Train Loss: 0.511562
+Epoch [71/100], Train Loss: 0.510971, Val Loss: 0.060175
+Step [1/7], Train Loss: 0.545461
+Epoch [72/100], Train Loss: 0.520099, Val Loss: 0.063595
+Step [1/7], Train Loss: 0.521751
+Epoch [73/100], Train Loss: 0.503320, Val Loss: 0.065992
+Step [1/7], Train Loss: 0.564792
+Epoch [74/100], Train Loss: 0.522989, Val Loss: 0.061119
+Step [1/7], Train Loss: 0.584803
+Epoch [75/100], Train Loss: 0.583602, Val Loss: 0.059792
+Step [1/7], Train Loss: 0.566883
+Epoch [76/100], Train Loss: 0.553194, Val Loss: 0.055823
+Step [1/7], Train Loss: 0.569127
+Epoch [77/100], Train Loss: 0.567869, Val Loss: 0.054691
+Step [1/7], Train Loss: 0.494592
+Epoch [78/100], Train Loss: 0.507536, Val Loss: 0.060050
+Step [1/7], Train Loss: 0.533610
+Epoch [79/100], Train Loss: 0.527235, Val Loss: 0.057268
+Step [1/7], Train Loss: 0.414991
+Epoch [80/100], Train Loss: 0.542037, Val Loss: 0.065492
+Step [1/7], Train Loss: 0.519742
+Epoch [81/100], Train Loss: 0.525620, Val Loss: 0.059082
+Step [1/7], Train Loss: 0.523714
+Epoch [82/100], Train Loss: 0.527151, Val Loss: 0.059275
+Step [1/7], Train Loss: 0.522165
+Epoch [83/100], Train Loss: 0.526702, Val Loss: 0.060675
+Step [1/7], Train Loss: 0.588117
+Epoch [84/100], Train Loss: 0.526301, Val Loss: 0.062572
+Step [1/7], Train Loss: 0.421693
+Epoch [85/100], Train Loss: 0.510185, Val Loss: 0.058694
+Step [1/7], Train Loss: 0.502942
+Epoch [86/100], Train Loss: 0.542445, Val Loss: 0.050895
+Step [1/7], Train Loss: 0.596301
+Epoch [87/100], Train Loss: 0.526355, Val Loss: 0.059354
+Step [1/7], Train Loss: 0.491065
+Epoch [88/100], Train Loss: 0.500335, Val Loss: 0.059172
+Step [1/7], Train Loss: 0.566227
+Epoch [89/100], Train Loss: 0.502308, Val Loss: 0.055551
+Step [1/7], Train Loss: 0.518289
+Epoch [90/100], Train Loss: 0.563473, Val Loss: 0.047081
+Step [1/7], Train Loss: 0.470052
+Epoch [91/100], Train Loss: 0.493509, Val Loss: 0.062727
+Step [1/7], Train Loss: 0.537160
+Epoch [92/100], Train Loss: 0.507369, Val Loss: 0.060618
+Step [1/7], Train Loss: 0.545949
+Epoch [93/100], Train Loss: 0.566299, Val Loss: 0.061324
+Step [1/7], Train Loss: 0.482600
+Epoch [94/100], Train Loss: 0.518111, Val Loss: 0.057449
+Step [1/7], Train Loss: 0.516266
+Epoch [95/100], Train Loss: 0.553023, Val Loss: 0.066358
+Step [1/7], Train Loss: 0.650680
+Epoch [96/100], Train Loss: 0.505531, Val Loss: 0.057412
+Step [1/7], Train Loss: 0.613879
+Epoch [97/100], Train Loss: 0.496609, Val Loss: 0.058773
+Step [1/7], Train Loss: 0.577112
+Epoch [98/100], Train Loss: 0.527557, Val Loss: 0.056762
+Step [1/7], Train Loss: 0.454938
+Epoch [99/100], Train Loss: 0.499129, Val Loss: 0.057588
+Step [1/7], Train Loss: 0.447034
+Epoch [100/100], Train Loss: 0.475348, Val Loss: 0.063477
+RETURN_VALUE:0.06347703901049936

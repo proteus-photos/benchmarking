@@ -1,0 +1,26 @@
+2024-09-29 13:39:32,082 INFO    MainThread:2193789 [wandb_setup.py:_flush():77] Current SDK version is 0.18.1
+2024-09-29 13:39:32,083 INFO    MainThread:2193789 [wandb_setup.py:_flush():77] Configure stats pid to 2193789
+2024-09-29 13:39:32,083 INFO    MainThread:2193789 [wandb_setup.py:_flush():77] Loading settings from /home/singh/.config/wandb/settings
+2024-09-29 13:39:32,083 INFO    MainThread:2193789 [wandb_setup.py:_flush():77] Loading settings from /home/singh/benchmarking/wandb/settings
+2024-09-29 13:39:32,083 INFO    MainThread:2193789 [wandb_setup.py:_flush():77] Loading settings from environment variables: {}
+2024-09-29 13:39:32,083 INFO    MainThread:2193789 [wandb_setup.py:_flush():77] Inferring run settings from compute environment: {'program_relpath': 'train_anchor.py', 'program_abspath': '/home/singh/benchmarking/train_anchor.py', 'program': '/home/singh/benchmarking/train_anchor.py'}
+2024-09-29 13:39:32,083 INFO    MainThread:2193789 [wandb_setup.py:_flush():77] Applying login settings: {}
+2024-09-29 13:39:32,083 INFO    MainThread:2193789 [wandb_setup.py:_flush():77] Applying login settings: {}
+2024-09-29 13:39:32,083 INFO    MainThread:2193789 [wandb_init.py:_log_setup():532] Logging user logs to /home/singh/benchmarking/wandb/run-20240929_133932-hsgbalhu/logs/debug.log
+2024-09-29 13:39:32,083 INFO    MainThread:2193789 [wandb_init.py:_log_setup():533] Logging internal logs to /home/singh/benchmarking/wandb/run-20240929_133932-hsgbalhu/logs/debug-internal.log
+2024-09-29 13:39:32,083 INFO    MainThread:2193789 [wandb_init.py:init():616] calling init triggers
+2024-09-29 13:39:32,083 INFO    MainThread:2193789 [wandb_init.py:init():623] wandb.init called with sweep_config: {}
+config: {'w_coeff': 4.0, 'i_coeff': 0.2, 'o_coeff': 2.0, 'gamma': 0.4, 'sharpness': 5.0, 'lr1': 2.334275650601467, 'lr2': 2.2633518969818787, 'id': 360}
+2024-09-29 13:39:32,083 INFO    MainThread:2193789 [wandb_init.py:init():666] starting backend
+2024-09-29 13:39:32,083 INFO    MainThread:2193789 [wandb_init.py:init():670] setting up manager
+2024-09-29 13:39:32,084 INFO    MainThread:2193789 [backend.py:_multiprocessing_setup():105] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2024-09-29 13:39:32,086 INFO    MainThread:2193789 [wandb_init.py:init():678] backend started and connected
+2024-09-29 13:39:32,088 INFO    MainThread:2193789 [wandb_init.py:init():773] updated telemetry
+2024-09-29 13:39:32,092 INFO    MainThread:2193789 [wandb_init.py:init():806] communicating run to backend with 90.0 second timeout
+2024-09-29 13:39:32,377 INFO    MainThread:2193789 [wandb_init.py:init():857] starting run threads in backend
+2024-09-29 13:39:32,469 INFO    MainThread:2193789 [wandb_run.py:_console_start():2459] atexit reg
+2024-09-29 13:39:32,470 INFO    MainThread:2193789 [wandb_run.py:_redirect():2307] redirect: wrap_raw
+2024-09-29 13:39:32,470 INFO    MainThread:2193789 [wandb_run.py:_redirect():2372] Wrapping output streams.
+2024-09-29 13:39:32,470 INFO    MainThread:2193789 [wandb_run.py:_redirect():2397] Redirects installed.
+2024-09-29 13:39:32,471 INFO    MainThread:2193789 [wandb_init.py:init():900] run started, returning control to user process
+2024-09-29 13:39:38,503 WARNING MsgRouterThr:2193789 [router.py:message_loop():77] message_loop has been closed

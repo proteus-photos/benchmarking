@@ -1,0 +1,26 @@
+cuda
+Step [1/7], Train Loss: 1.695693
+Epoch [1/100], Train Loss: 1.693474, Val Loss: 0.082974
+Step [1/7], Train Loss: 1.214235
+Epoch [2/100], Train Loss: 1.420936, Val Loss: 0.079270
+Step [1/7], Train Loss: 1.568181
+Epoch [3/100], Train Loss: 1.428922, Val Loss: 0.072503
+Step [1/7], Train Loss: 1.248821
+Epoch [4/100], Train Loss: 1.401057, Val Loss: 0.081614
+Step [1/7], Train Loss: 1.340273
+Epoch [5/100], Train Loss: 1.383571, Val Loss: 0.068993
+Step [1/7], Train Loss: 1.080767
+Traceback (most recent call last):
+  File "/home/singh/benchmarking/train_anchor.py", line 352, in <module>
+    myplot(normalize(random_transform(images)), output1s, state1s, output2s, state2s, args.id)
+  File "/home/singh/benchmarking/train_anchor.py", line 88, in myplot
+    images[i] = draw_keypoints(images[i],
+  File "/home/singh/miniconda3/envs/proteus/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/singh/miniconda3/envs/proteus/lib/python3.10/site-packages/torchvision/utils.py", line 444, in draw_keypoints
+    out = torch.from_numpy(np.array(img_to_draw)).permute(2, 0, 1)
+  File "/home/singh/miniconda3/envs/proteus/lib/python3.10/site-packages/PIL/Image.py", line 681, in __array_interface__
+    new["data"] = self.tobytes()
+  File "/home/singh/miniconda3/envs/proteus/lib/python3.10/site-packages/PIL/Image.py", line 753, in tobytes
+    bytes_consumed, errcode, data = e.encode(bufsize)
+KeyboardInterrupt

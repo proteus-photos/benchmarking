@@ -1,0 +1,19 @@
+{"time":"2024-09-26T19:13:50.000978673Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-09-26T19:13:50.000995505Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20240926_191349-gs02xphg/logs/debug-core.log"}
+{"time":"2024-09-26T19:13:50.001044616Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-09-26T19:13:50.001048948Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20240926_191349-gs02xphg/logs/debug-core.log"}
+{"time":"2024-09-26T19:13:50.001771425Z","level":"INFO","msg":"created new stream","id":"gs02xphg"}
+{"time":"2024-09-26T19:13:50.00179157Z","level":"INFO","msg":"stream: started","id":"gs02xphg"}
+{"time":"2024-09-26T19:13:50.001796082Z","level":"INFO","msg":"handler: started","stream_id":{"value":"gs02xphg"}}
+{"time":"2024-09-26T19:13:50.001827212Z","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"gs02xphg"}}
+{"time":"2024-09-26T19:13:50.001819213Z","level":"INFO","msg":"sender: started","stream_id":{"value":"gs02xphg"}}
+{"time":"2024-09-26T19:13:50.334895201Z","level":"INFO","msg":"wandb-core","!BADKEY":null}
+{"time":"2024-09-26T19:13:50.335982714Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-09-26T19:24:20.442128727Z","level":"INFO","msg":"stream: closing","id":"gs02xphg"}
+{"time":"2024-09-26T19:24:20.442160742Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-09-26T19:24:20.442333861Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-09-26T19:24:21.849680319Z","level":"INFO","msg":"handler: closed","stream_id":{"value":"gs02xphg"}}
+{"time":"2024-09-26T19:24:21.849733423Z","level":"INFO","msg":"sender: closed","stream_id":{"value":"gs02xphg"}}
+{"time":"2024-09-26T19:24:21.849715492Z","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"gs02xphg"}}
+{"time":"2024-09-26T19:24:21.849796229Z","level":"ERROR","msg":"runfiles: CreateRunFiles returned error: api: failed sending: POST https://api.wandb.ai/graphql giving up after 1 attempt(s): context canceled"}
+{"time":"2024-09-26T19:24:21.849800336Z","level":"INFO","msg":"stream: closed","id":"gs02xphg"}

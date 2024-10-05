@@ -1,0 +1,18 @@
+{"time":"2024-09-29T21:40:11.683161565Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-09-29T21:40:11.68317776Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20240929_214011-8d6nvgk4/logs/debug-core.log"}
+{"time":"2024-09-29T21:40:11.683224507Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-09-29T21:40:11.683228685Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20240929_214011-8d6nvgk4/logs/debug-core.log"}
+{"time":"2024-09-29T21:40:11.684040633Z","level":"INFO","msg":"created new stream","id":"8d6nvgk4"}
+{"time":"2024-09-29T21:40:11.684064153Z","level":"INFO","msg":"stream: started","id":"8d6nvgk4"}
+{"time":"2024-09-29T21:40:11.684089141Z","level":"INFO","msg":"handler: started","stream_id":{"value":"8d6nvgk4"}}
+{"time":"2024-09-29T21:40:11.684101231Z","level":"INFO","msg":"sender: started","stream_id":{"value":"8d6nvgk4"}}
+{"time":"2024-09-29T21:40:11.684099216Z","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"8d6nvgk4"}}
+{"time":"2024-09-29T21:40:12.031512622Z","level":"INFO","msg":"wandb-core","!BADKEY":null}
+{"time":"2024-09-29T21:40:12.03316171Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-09-29T21:51:52.532786165Z","level":"INFO","msg":"stream: closing","id":"8d6nvgk4"}
+{"time":"2024-09-29T21:51:52.532865072Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-09-29T21:51:52.533039044Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-09-29T21:51:54.57748421Z","level":"INFO","msg":"handler: closed","stream_id":{"value":"8d6nvgk4"}}
+{"time":"2024-09-29T21:51:54.577535857Z","level":"INFO","msg":"sender: closed","stream_id":{"value":"8d6nvgk4"}}
+{"time":"2024-09-29T21:51:54.577523565Z","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"8d6nvgk4"}}
+{"time":"2024-09-29T21:51:54.577611997Z","level":"INFO","msg":"stream: closed","id":"8d6nvgk4"}

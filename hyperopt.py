@@ -13,8 +13,8 @@ param_ranges = {
     # "min_margin": (0.1, 0.5),
     # "gamma": (0.05, 0.8),
     # "sharpness": (0.5, 5.0),
-    "lr1": (3, 6),
-    "lr2": (3, 6),
+    "lr1": (2, 7),
+    "lr2": (2, 3),
 }
 
 # Number of random trials

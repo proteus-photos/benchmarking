@@ -218,6 +218,7 @@ class TileDatabaseV2:
 
         self.anchors = self.metadata["anchors"]
         self.n_ranges = self.metadata["n_ranges"]
+        self.indices = self.metadata["indices"]
 
 
     def query(self, image, hasher, query_anchor, K_RETRIEVAL=1, index=None):
@@ -230,6 +231,7 @@ class TileDatabaseV2:
         
         for db_tile_hashes, db_n_range in zip(self.hashes, self.n_ranges):
             query_overlap, db_overlap = n_range_overlap_slice(query_n_range, db_n_range)
+            print(query_n_range, db_n_range)
             query_hashes = query_tile_hashes[query_overlap[Y][0]:query_overlap[Y][1],
                                              query_overlap[X][0]:query_overlap[X][1]]
             
@@ -247,7 +249,7 @@ class TileDatabaseV2:
         inds = np.argpartition(similarities, -K_RETRIEVAL)[-K_RETRIEVAL:]
 
         return_data = {
-            "matches": [{"index": ind, "score": similarities[ind], "similarity_grid": similarity_grids[ind]} for ind in inds],
+            "matches": [{"index": self.indices[ind], "score": similarities[ind], "similarity_grid": similarity_grids[ind]} for ind in inds],
             "true_score": similarities[index] if index is not None else None
         }
         return return_data

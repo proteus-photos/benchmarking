@@ -164,7 +164,7 @@ def create_model(checkpoint=None, backbone="mobilenet"):
             nn.Hardswish(),
             # nn.Dropout(p=0.2, inplace=True),
             nn.Linear(1280, 4),
-            # nn.ReLU()
+            nn.ReLU()
         )
     elif backbone == "resnet":
         model = ResNetModel()
@@ -193,15 +193,15 @@ def tilize_by_anchors(image, n_breaks, anchors):
     tile_height = (anchors[Y2] - anchors[Y1])/n_breaks
 
     # compute number of grid lines in left and right directions
-    n_max_pos_width = (1 - anchors[X1]) // tile_width
-    n_max_neg_width =  - (anchors[X1] // tile_width)
+    n_max_pos_width = (1 - anchors[X1] + 1e-6) // tile_width
+    n_max_neg_width =  - ((anchors[X1] + 1e-6) // tile_width)
     n_values = np.arange(n_max_neg_width, n_max_pos_width + 1)
     # Compute the corresponding values of x + n * dx
     width_values = (anchors[X1] + n_values * tile_width) * width
 
     # compute number of grid lines in up and down directions
-    n_max_pos_height = (1 - anchors[Y1]) // tile_height
-    n_max_neg_height = - (anchors[Y1] // tile_height)
+    n_max_pos_height = (1 - anchors[Y1] + 1e-6) // tile_height
+    n_max_neg_height = - ((anchors[Y1] + 1e-6) // tile_height)
     n_values = np.arange(n_max_neg_height, n_max_pos_height + 1)
 
     # Compute the corresponding values of y + n * dy

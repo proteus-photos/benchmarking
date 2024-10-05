@@ -1,0 +1,18 @@
+{"time":"2024-09-29T01:25:21.251154585Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-09-29T01:25:21.251172757Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20240929_012521-oawo1afb/logs/debug-core.log"}
+{"time":"2024-09-29T01:25:21.251226123Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-09-29T01:25:21.251231425Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20240929_012521-oawo1afb/logs/debug-core.log"}
+{"time":"2024-09-29T01:25:21.252129334Z","level":"INFO","msg":"created new stream","id":"oawo1afb"}
+{"time":"2024-09-29T01:25:21.25215773Z","level":"INFO","msg":"stream: started","id":"oawo1afb"}
+{"time":"2024-09-29T01:25:21.252179593Z","level":"INFO","msg":"sender: started","stream_id":{"value":"oawo1afb"}}
+{"time":"2024-09-29T01:25:21.252230233Z","level":"INFO","msg":"handler: started","stream_id":{"value":"oawo1afb"}}
+{"time":"2024-09-29T01:25:21.252174721Z","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"oawo1afb"}}
+{"time":"2024-09-29T01:25:21.581678554Z","level":"INFO","msg":"wandb-core","!BADKEY":null}
+{"time":"2024-09-29T01:25:21.582698704Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-09-29T01:36:58.273219222Z","level":"INFO","msg":"stream: closing","id":"oawo1afb"}
+{"time":"2024-09-29T01:36:58.273246678Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-09-29T01:36:58.273402767Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-09-29T01:37:00.334460477Z","level":"INFO","msg":"handler: closed","stream_id":{"value":"oawo1afb"}}
+{"time":"2024-09-29T01:37:00.334513383Z","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"oawo1afb"}}
+{"time":"2024-09-29T01:37:00.334543803Z","level":"INFO","msg":"sender: closed","stream_id":{"value":"oawo1afb"}}
+{"time":"2024-09-29T01:37:00.334581192Z","level":"INFO","msg":"stream: closed","id":"oawo1afb"}

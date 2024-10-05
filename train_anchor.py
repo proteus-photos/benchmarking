@@ -349,7 +349,10 @@ if __name__ == "__main__":
                 print(f"Step [{step_no+1}/{len(train_loader)}], Train Loss: {train_loss/(step_no+1):.6f}")
             
         train_loss /= len(train_loader)
-        myplot(normalize(random_transform(images)), output1s, state1s, output2s, state2s, args.id)
+        if train_loss > 1e2 or torch.isnan(loss) or torch.isnan(output1s).any() or torch.isnan(output2s).any():
+            print(f"RETURN_VALUE:100", file=sys.stderr)
+            exit()
+        myplot(normalize(images), output1s, state1s, output2s, state2s, args.id)
 
         model.eval()
         val_loss = 0.0
@@ -368,8 +371,12 @@ if __name__ == "__main__":
                 output2s = model(image2s)
                 output2s = reparametricize(output2s)
 
-                loss = overlap_loss(output1s, state1s, output2s, state2s)            
+                loss = overlap_loss(output1s, state1s, output2s, state2s)         
                 val_loss += loss.item()
+                if torch.isnan(loss):
+                    print(f"RETURN_VALUE:100", file=sys.stderr)
+                    exit()
+
         val_loss /= len(val_loader)
 
         # Save checkpoint

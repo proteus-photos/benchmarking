@@ -1,0 +1,19 @@
+{"time":"2024-09-27T15:47:28.187003172Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-09-27T15:47:28.187018622Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20240927_154728-i0lcuwfx/logs/debug-core.log"}
+{"time":"2024-09-27T15:47:28.187066054Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-09-27T15:47:28.187070283Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20240927_154728-i0lcuwfx/logs/debug-core.log"}
+{"time":"2024-09-27T15:47:28.187882147Z","level":"INFO","msg":"created new stream","id":"i0lcuwfx"}
+{"time":"2024-09-27T15:47:28.187901444Z","level":"INFO","msg":"stream: started","id":"i0lcuwfx"}
+{"time":"2024-09-27T15:47:28.187920732Z","level":"INFO","msg":"sender: started","stream_id":{"value":"i0lcuwfx"}}
+{"time":"2024-09-27T15:47:28.187924184Z","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"i0lcuwfx"}}
+{"time":"2024-09-27T15:47:28.187925477Z","level":"INFO","msg":"handler: started","stream_id":{"value":"i0lcuwfx"}}
+{"time":"2024-09-27T15:47:28.525080343Z","level":"INFO","msg":"wandb-core","!BADKEY":null}
+{"time":"2024-09-27T15:47:28.526570139Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-09-27T15:49:17.052178845Z","level":"INFO","msg":"api: retrying HTTP error","status":502,"url":"https://api.wandb.ai/graphql"}
+{"time":"2024-09-27T15:58:11.320744204Z","level":"INFO","msg":"stream: closing","id":"i0lcuwfx"}
+{"time":"2024-09-27T15:58:11.320825076Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-09-27T15:58:11.320990105Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-09-27T15:58:14.461478359Z","level":"INFO","msg":"handler: closed","stream_id":{"value":"i0lcuwfx"}}
+{"time":"2024-09-27T15:58:14.461535399Z","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"i0lcuwfx"}}
+{"time":"2024-09-27T15:58:14.461554291Z","level":"INFO","msg":"sender: closed","stream_id":{"value":"i0lcuwfx"}}
+{"time":"2024-09-27T15:58:14.461611484Z","level":"INFO","msg":"stream: closed","id":"i0lcuwfx"}

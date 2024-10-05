@@ -1,0 +1,10 @@
+cuda
+Step [1/7], Train Loss: 1.695607
+Epoch [1/100], Train Loss: 1.665690, Val Loss: 0.085847
+Step [1/7], Train Loss: 1.293258
+Epoch [2/100], Train Loss: 1.472940, Val Loss: 0.085474
+Step [1/7], Train Loss: 1.640196
+Traceback (most recent call last):
+  File "/home/singh/benchmarking/train_anchor.py", line 331, in <module>
+    image2s = normalize((image2s)).to(device)
+KeyboardInterrupt

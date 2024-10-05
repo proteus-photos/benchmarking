@@ -1,6 +1,7 @@
 from PIL import Image
 import io
 from random import random
+
 class Transformer:
     def __init__(self):
         pass

@@ -1,0 +1,16 @@
+cuda
+Step [1/7], Train Loss: 1.695627
+Epoch [1/100], Train Loss: 29455346.274789, Val Loss: 808.725210
+Step [1/7], Train Loss: 12638.118213
+Traceback (most recent call last):
+  File "/home/singh/benchmarking/train_anchor.py", line 352, in <module>
+    myplot(normalize(random_transform(images)), output1s, state1s, output2s, state2s, args.id)
+  File "/home/singh/benchmarking/train_anchor.py", line 84, in myplot
+    images[i] = draw_keypoints(images[i],
+  File "/home/singh/miniconda3/envs/proteus/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/singh/miniconda3/envs/proteus/lib/python3.10/site-packages/torchvision/utils.py", line 427, in draw_keypoints
+    draw.ellipse([x1, y1, x2, y2], fill=colors, outline=None, width=0)
+  File "/home/singh/miniconda3/envs/proteus/lib/python3.10/site-packages/PIL/ImageDraw.py", line 175, in ellipse
+    self.draw.draw_ellipse(xy, fill, 1)
+ValueError: x1 must be greater than or equal to x0

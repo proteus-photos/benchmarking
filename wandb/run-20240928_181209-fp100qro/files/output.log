@@ -1,0 +1,91 @@
+cuda
+Step [1/7], Train Loss: 1.695666
+Epoch [1/100], Train Loss: 2.174254, Val Loss: 0.146287
+Step [1/7], Train Loss: 1.747584
+Epoch [2/100], Train Loss: 1.564744, Val Loss: 0.088864
+Step [1/7], Train Loss: 1.485451
+Epoch [3/100], Train Loss: 1.447981, Val Loss: 0.088934
+Step [1/7], Train Loss: 1.569977
+Epoch [4/100], Train Loss: 1.362501, Val Loss: 0.090670
+Step [1/7], Train Loss: 1.489895
+Epoch [5/100], Train Loss: 1.372772, Val Loss: 0.109030
+Step [1/7], Train Loss: 1.205281
+Epoch [6/100], Train Loss: 1.275581, Val Loss: 0.098848
+Step [1/7], Train Loss: 1.286319
+Epoch [7/100], Train Loss: 1.312850, Val Loss: 0.095254
+Step [1/7], Train Loss: 1.273830
+Epoch [8/100], Train Loss: 1.307448, Val Loss: 0.093357
+Step [1/7], Train Loss: 1.335033
+Epoch [9/100], Train Loss: 1.292795, Val Loss: 0.084142
+Step [1/7], Train Loss: 1.242038
+Epoch [10/100], Train Loss: 1.173290, Val Loss: 0.085827
+Step [1/7], Train Loss: 1.283455
+Epoch [11/100], Train Loss: 1.277620, Val Loss: 0.074425
+Step [1/7], Train Loss: 1.285917
+Epoch [12/100], Train Loss: 1.225579, Val Loss: 0.074707
+Step [1/7], Train Loss: 1.373445
+Epoch [13/100], Train Loss: 1.190607, Val Loss: 0.075241
+Step [1/7], Train Loss: 1.310888
+Epoch [14/100], Train Loss: 1.161368, Val Loss: 0.076694
+Step [1/7], Train Loss: 1.273118
+Epoch [15/100], Train Loss: 1.145102, Val Loss: 0.077234
+Step [1/7], Train Loss: 1.142383
+Epoch [16/100], Train Loss: 1.129058, Val Loss: 0.067069
+Step [1/7], Train Loss: 1.209317
+Epoch [17/100], Train Loss: 1.079631, Val Loss: 0.067872
+Step [1/7], Train Loss: 1.030730
+Epoch [18/100], Train Loss: 1.115889, Val Loss: 0.064567
+Step [1/7], Train Loss: 1.177273
+Epoch [19/100], Train Loss: 1.109787, Val Loss: 0.068307
+Step [1/7], Train Loss: 1.148420
+Epoch [20/100], Train Loss: 1.119149, Val Loss: 0.066503
+Step [1/7], Train Loss: 1.133636
+Epoch [21/100], Train Loss: 1.038251, Val Loss: 0.072077
+Step [1/7], Train Loss: 0.916438
+Epoch [22/100], Train Loss: 0.980088, Val Loss: 0.075007
+Step [1/7], Train Loss: 1.019829
+Epoch [23/100], Train Loss: 1.074028, Val Loss: 0.071336
+Step [1/7], Train Loss: 1.005894
+Epoch [24/100], Train Loss: 1.005372, Val Loss: 0.063667
+Step [1/7], Train Loss: 1.120366
+Epoch [25/100], Train Loss: 1.031692, Val Loss: 0.061826
+Step [1/7], Train Loss: 1.119183
+Epoch [26/100], Train Loss: 0.977091, Val Loss: 0.060262
+Step [1/7], Train Loss: 1.165737
+Epoch [27/100], Train Loss: 1.113961, Val Loss: 0.064510
+Step [1/7], Train Loss: 1.150325
+Epoch [28/100], Train Loss: 1.000163, Val Loss: 0.061304
+Step [1/7], Train Loss: 1.057874
+Epoch [29/100], Train Loss: 1.016118, Val Loss: 0.063674
+Step [1/7], Train Loss: 1.037782
+Epoch [30/100], Train Loss: 0.984174, Val Loss: 0.059461
+Step [1/7], Train Loss: 1.073995
+Epoch [31/100], Train Loss: 1.006192, Val Loss: 0.070689
+Step [1/7], Train Loss: 1.079700
+Epoch [32/100], Train Loss: 1.001599, Val Loss: 0.064985
+Step [1/7], Train Loss: 1.053021
+Epoch [33/100], Train Loss: 1.004170, Val Loss: 0.066903
+Step [1/7], Train Loss: 1.043261
+Epoch [34/100], Train Loss: 0.954928, Val Loss: 0.058431
+Step [1/7], Train Loss: 0.946063
+Epoch [35/100], Train Loss: 0.906658, Val Loss: 0.063156
+Step [1/7], Train Loss: 1.068625
+Epoch [36/100], Train Loss: 0.999082, Val Loss: 0.062761
+Step [1/7], Train Loss: 0.989780
+Epoch [37/100], Train Loss: 0.909452, Val Loss: 0.058064
+Step [1/7], Train Loss: 0.917869
+Epoch [38/100], Train Loss: 0.899406, Val Loss: 0.057537
+Step [1/7], Train Loss: 1.059178
+Epoch [39/100], Train Loss: 0.940359, Val Loss: 0.060081
+Step [1/7], Train Loss: 0.895106
+Epoch [40/100], Train Loss: 0.932098, Val Loss: 0.059468
+Step [1/7], Train Loss: 1.025124
+Epoch [41/100], Train Loss: 0.949105, Val Loss: 0.070562
+Step [1/7], Train Loss: 0.898132
+Epoch [42/100], Train Loss: 0.904090, Val Loss: 0.058928
+Step [1/7], Train Loss: 0.982445
+Epoch [43/100], Train Loss: 0.903951, Val Loss: 0.057211
+Step [1/7], Train Loss: 0.865118
+Epoch [44/100], Train Loss: 0.935781, Val Loss: 0.051785
+Step [1/7], Train Loss: 0.936109
+RETURN_VALUE:100
