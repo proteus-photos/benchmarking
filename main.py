@@ -18,11 +18,11 @@ from hashes.phash import phash
 from hashes.whash import whash
 from hashes.neuralhash import neuralhash
 
-transformations = ['screenshot'] #, 'double screenshot', 'jpeg', 'crop']
-hash_methods = [neuralhash] # dhash, phash, blockhash, whash
+transformation = 'screenshot' #, 'double screenshot', 'jpeg', 'crop']
+hasher = neuralhash # dhash, phash, blockhash, whash
 
 dataset_folder = './dataset/imagenet/images'
-image_files = [f for f in os.listdir(dataset_folder)][:1_000]
+image_files = [f for f in os.listdir(dataset_folder)][:1000]
 
 N_IMAGE_RETRIEVAL = 5
 
@@ -34,36 +34,40 @@ args = parser.parse_args()
 t = Transformer()
 
 os.makedirs("databases", exist_ok=True)
-databases = []
-for hasher in hash_methods:
-    if hasher.__name__ + ".npy" not in os.listdir("databases") or args.refresh:
-        print("Creating database for", hasher.__name__)
-        original_hashes = []
-        for image_file in tqdm(image_files):
-            image = Image.open(os.path.join(dataset_folder, image_file)).convert("RGB")
-            original_hashes.append(hasher([image])[0])
-            gc.collect()
-        db = Database(original_hashes, storedir=f"databases/{hasher.__name__}")
-    else:
-        db = Database(None, storedir=f"databases/{hasher.__name__}")
+if hasher.__name__ + ".npy" not in os.listdir("databases") or args.refresh:
+    print("Creating database for", hasher.__name__)
+    original_hashes = []
+    for image_file in tqdm(image_files):
+        image = Image.open(os.path.join(dataset_folder, image_file)).convert("RGB")
+        original_hashes.append(hasher([image])[0])
+        gc.collect()
+    db = Database(original_hashes, storedir=f"databases/{hasher.__name__}")
+else:
+    db = Database(None, storedir=f"databases/{hasher.__name__}")
 
-    databases.append(db)
+### Evaluate Hamming distance
 
-n_matches = np.zeros((len(hash_methods), len(transformations)))
+transformed_images = [t.transform(Image.open(os.path.join(dataset_folder, image_file)).convert("RGB"), transformation) for image_file in image_files]
+hashes = hasher(transformed_images)
+not_hashes = hashes[::-1]
 
-print("Computing top 5 accuracy...")
-for index, image_file in tqdm(enumerate(image_files), total=len(image_files)):
-    image = Image.open(os.path.join(dataset_folder, image_file)).convert("RGB")
-    for j, transformation in enumerate(transformations):
-        transformed_image = t.transform(image, transformation)
-        for i, (hasher, database) in enumerate(zip(hash_methods, databases)):
-            modified_hash = hasher([transformed_image])[0]
-            result = database.query(modified_hash, k=N_IMAGE_RETRIEVAL)
-            if index in [point["index"] for point in result]:
-                n_matches[i, j] += 1
-    gc.collect()
+matches = db.similarity_score(hashes)
+print("True:")
+print(matches.mean(), matches.std())
 
-for i, (hasher, database) in enumerate(zip(hash_methods, databases)):
-    for j, transformation in enumerate(transformations):
-        print(f'{hasher.__name__} with {transformation} transformation:', n_matches[i, j] / len(image_files))
-    print("#############################################")
+not_matches = db.similarity_score(not_hashes)
+print("False:")
+print(not_matches.mean(), not_matches.std())
+
+# n_matches = 0
+# print("Computing top 5 accuracy...")
+# for index, image_file in enumerate(tqdm(image_files)):
+#     image = Image.open(os.path.join(dataset_folder, image_file)).convert("RGB")
+#     transformed_image = t.transform(image, transformation)
+#     modified_hash = hasher([transformed_image])[0]
+#     result = db.query(modified_hash, k=N_IMAGE_RETRIEVAL)
+#     if index in [point["index"] for point in result]:
+#         n_matches += 1
+
+#     gc.collect()
+# print(f'{hasher.__name__} with {transformation} transformation:', n_matches / len(image_files))

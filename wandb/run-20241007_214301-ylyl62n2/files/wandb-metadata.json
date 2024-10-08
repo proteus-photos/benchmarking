@@ -1,0 +1,53 @@
+{
+  "os": "Linux-6.1.0-23-cloud-amd64-x86_64-with-glibc2.36",
+  "python": "3.10.14",
+  "startedAt": "2024-10-07T21:43:02.011141Z",
+  "args": [
+    "--lr1",
+    "2.447921500589595",
+    "--lr2",
+    "1.6589946307892776",
+    "--t0",
+    "18.517139091103687",
+    "--id",
+    "13"
+  ],
+  "program": "/home/singh/benchmarking/train_anchor.py",
+  "codePath": "train_anchor.py",
+  "git": {
+    "remote": "git@github.com:proteus-photos/benchmarking.git",
+    "commit": "4d2b1fe6b094a727232388a842324478cbf1b4ef"
+  },
+  "email": "singhishree@gmail.com",
+  "root": "/home/singh/benchmarking",
+  "host": "instance-20240805-141359",
+  "username": "singh",
+  "executable": "/home/singh/miniconda3/envs/proteus/bin/python",
+  "codePathLocal": "train_anchor.py",
+  "cpu_count": 6,
+  "cpu_count_logical": 12,
+  "gpu": "[NVIDIA A100-SXM4-40GB]",
+  "gpu_count": 1,
+  "disk": {
+    "/": {
+      "total": "528173547520",
+      "used": "199461445632"
+    }
+  },
+  "memory": {
+    "total": "89632591872"
+  },
+  "cpu": {
+    "count": 6,
+    "countLogical": 12
+  },
+  "gpu_nvidia": [
+    {
+      "name": "NVIDIA A100-SXM4-40GB",
+      "memoryTotal": "42949672960",
+      "cudaCores": 6912,
+      "architecture": "Ampere"
+    }
+  ],
+  "cudaVersion": "12.4"
+}

@@ -106,7 +106,7 @@ def myplot(images, output1s, state1s, output2s, state2s, epoch):
 
 class CustomDataset(Dataset):
     def __init__(self, image_directory, transform=None):
-        self.image_paths = [os.path.join(image_directory, x) for x in os.listdir(image_directory)[:1000]]
+        self.image_paths = [os.path.join(image_directory, x) for x in os.listdir(image_directory)[:10_000]]
         self.transform = transform
 
     def __len__(self):
@@ -250,8 +250,9 @@ if __name__ == "__main__":
     parser.add_argument("--o_coeff", type=float, default=2.0, help="Weight coefficient for the overlap loss")
     parser.add_argument("--gamma", type=float, default=0.4, help="Gamma for the box loss function")
     parser.add_argument("--sharpness", type=float, default=5.0, help="Sharpness for the distance function")
-    parser.add_argument("--lr1", type=float, default=4.5, help="Learning rate for the classifier")
-    parser.add_argument("--lr2", type=float, default=4.0, help="Learning rate for the last blocks")
+    parser.add_argument("--lr1", type=float, default=3.0, help="Learning rate for the classifier")
+    parser.add_argument("--lr2", type=float, default=1.5, help="Learning rate for the last blocks")
+    parser.add_argument("--t0", type=float, default=10, help="T0 for cosine annealing")
     parser.add_argument("--id", type=int, default=0, help="ID of the experiment")
 
     args = parser.parse_args()
@@ -290,11 +291,12 @@ if __name__ == "__main__":
         else:
             param.requires_grad = False
 
-    optimizer = torch.optim.Adam([
+    optimizer = torch.optim.SGD([
         {'params': classifier_params, 'lr': lr1},
         {'params': last_blocks_params, 'lr': lr2},
     ])
 
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=round(args.t0), T_mult=2)
 
     dataset = CustomDataset("./dataset/imagenet/images", transform=transform)
 
@@ -343,6 +345,7 @@ if __name__ == "__main__":
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
             optimizer.step()
+            scheduler.step(epoch + step_no / len(train_loader))
             
             train_loss += loss.item()
             if (step_no % 80 == 0):

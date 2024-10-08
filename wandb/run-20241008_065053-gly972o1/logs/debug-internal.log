@@ -1,0 +1,21 @@
+{"time":"2024-10-08T06:50:53.852265982Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-10-08T06:50:53.852288359Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20241008_065053-gly972o1/logs/debug-core.log"}
+{"time":"2024-10-08T06:50:53.852372977Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-10-08T06:50:53.85237965Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20241008_065053-gly972o1/logs/debug-core.log"}
+{"time":"2024-10-08T06:50:53.878917936Z","level":"INFO","msg":"created new stream","id":"gly972o1"}
+{"time":"2024-10-08T06:50:53.878944808Z","level":"INFO","msg":"stream: started","id":"gly972o1"}
+{"time":"2024-10-08T06:50:53.878991182Z","level":"INFO","msg":"handler: started","stream_id":{"value":"gly972o1"}}
+{"time":"2024-10-08T06:50:53.879082933Z","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"gly972o1"}}
+{"time":"2024-10-08T06:50:53.879239028Z","level":"INFO","msg":"sender: started","stream_id":{"value":"gly972o1"}}
+{"time":"2024-10-08T06:50:54.380484451Z","level":"INFO","msg":"wandb-core","!BADKEY":null}
+{"time":"2024-10-08T06:50:54.381712316Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-10-08T09:38:30.600806017Z","level":"INFO","msg":"api: retrying HTTP error","status":500,"url":"https://api.wandb.ai/files/singhishree/standard%20LR/gly972o1/file_stream"}
+{"time":"2024-10-08T09:38:55.045841901Z","level":"INFO","msg":"api: retrying HTTP request, no error or response"}
+{"time":"2024-10-08T11:14:40.247941636Z","level":"INFO","msg":"api: retrying HTTP request, no error or response"}
+{"time":"2024-10-08T11:17:39.927193336Z","level":"INFO","msg":"stream: closing","id":"gly972o1"}
+{"time":"2024-10-08T11:17:39.927696182Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-10-08T11:17:39.929790691Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-10-08T11:17:41.969078907Z","level":"INFO","msg":"handler: closed","stream_id":{"value":"gly972o1"}}
+{"time":"2024-10-08T11:17:41.969187908Z","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"gly972o1"}}
+{"time":"2024-10-08T11:17:41.969265765Z","level":"INFO","msg":"sender: closed","stream_id":{"value":"gly972o1"}}
+{"time":"2024-10-08T11:17:41.969278825Z","level":"INFO","msg":"stream: closed","id":"gly972o1"}

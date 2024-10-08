@@ -1,0 +1,20 @@
+{"time":"2024-10-05T12:46:55.183814955Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-10-05T12:46:55.183838149Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20241005_124655-o1rcyf77/logs/debug-core.log"}
+{"time":"2024-10-05T12:46:55.183910086Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-10-05T12:46:55.183918177Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20241005_124655-o1rcyf77/logs/debug-core.log"}
+{"time":"2024-10-05T12:46:55.186114958Z","level":"INFO","msg":"created new stream","id":"o1rcyf77"}
+{"time":"2024-10-05T12:46:55.186178101Z","level":"INFO","msg":"stream: started","id":"o1rcyf77"}
+{"time":"2024-10-05T12:46:55.186217137Z","level":"INFO","msg":"handler: started","stream_id":{"value":"o1rcyf77"}}
+{"time":"2024-10-05T12:46:55.186276297Z","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"o1rcyf77"}}
+{"time":"2024-10-05T12:46:55.186234811Z","level":"INFO","msg":"sender: started","stream_id":{"value":"o1rcyf77"}}
+{"time":"2024-10-05T12:46:55.528984079Z","level":"INFO","msg":"wandb-core","!BADKEY":null}
+{"time":"2024-10-05T12:46:55.530650994Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-10-05T14:40:40.906540335Z","level":"INFO","msg":"api: retrying HTTP request, no error or response"}
+{"time":"2024-10-05T16:52:27.610901892Z","level":"INFO","msg":"api: retrying HTTP error","status":502,"url":"https://api.wandb.ai/graphql"}
+{"time":"2024-10-05T17:13:30.998904326Z","level":"INFO","msg":"stream: closing","id":"o1rcyf77"}
+{"time":"2024-10-05T17:13:30.998994204Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-10-05T17:13:30.999159878Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-10-05T17:13:33.191067096Z","level":"INFO","msg":"handler: closed","stream_id":{"value":"o1rcyf77"}}
+{"time":"2024-10-05T17:13:33.19122458Z","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"o1rcyf77"}}
+{"time":"2024-10-05T17:13:33.191287788Z","level":"INFO","msg":"sender: closed","stream_id":{"value":"o1rcyf77"}}
+{"time":"2024-10-05T17:13:33.191308653Z","level":"INFO","msg":"stream: closed","id":"o1rcyf77"}

@@ -1,0 +1,20 @@
+{"time":"2024-10-08T07:11:58.527910954Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-10-08T07:11:58.527938073Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20241008_071158-mgigo2v8/logs/debug-core.log"}
+{"time":"2024-10-08T07:11:58.528011894Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-10-08T07:11:58.528019092Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20241008_071158-mgigo2v8/logs/debug-core.log"}
+{"time":"2024-10-08T07:11:58.529222265Z","level":"INFO","msg":"created new stream","id":"mgigo2v8"}
+{"time":"2024-10-08T07:11:58.529245251Z","level":"INFO","msg":"stream: started","id":"mgigo2v8"}
+{"time":"2024-10-08T07:11:58.529270246Z","level":"INFO","msg":"handler: started","stream_id":{"value":"mgigo2v8"}}
+{"time":"2024-10-08T07:11:58.529343508Z","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"mgigo2v8"}}
+{"time":"2024-10-08T07:11:58.529405724Z","level":"INFO","msg":"sender: started","stream_id":{"value":"mgigo2v8"}}
+{"time":"2024-10-08T07:11:58.939791868Z","level":"INFO","msg":"wandb-core","!BADKEY":null}
+{"time":"2024-10-08T07:11:58.942943106Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-10-08T09:38:34.874613591Z","level":"INFO","msg":"api: retrying HTTP error","status":500,"url":"https://api.wandb.ai/files/singhishree/standard%20LR/mgigo2v8/file_stream"}
+{"time":"2024-10-08T09:38:59.509238459Z","level":"INFO","msg":"api: retrying HTTP request, no error or response"}
+{"time":"2024-10-08T11:38:01.406936166Z","level":"INFO","msg":"stream: closing","id":"mgigo2v8"}
+{"time":"2024-10-08T11:38:01.407277279Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-10-08T11:38:01.408316945Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-10-08T11:38:03.444590822Z","level":"INFO","msg":"handler: closed","stream_id":{"value":"mgigo2v8"}}
+{"time":"2024-10-08T11:38:03.444920863Z","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"mgigo2v8"}}
+{"time":"2024-10-08T11:38:03.444942474Z","level":"INFO","msg":"sender: closed","stream_id":{"value":"mgigo2v8"}}
+{"time":"2024-10-08T11:38:03.445508402Z","level":"INFO","msg":"stream: closed","id":"mgigo2v8"}

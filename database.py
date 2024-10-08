@@ -82,6 +82,11 @@ class Database:
                 data["metadata"] = self.metadata[data["index"]]
         
         return return_data
+
+    def similarity_score(self, query_hashes):
+        similarity_score = (query_hashes == self.hashes).mean(1)
+
+        return similarity_score
     
     def parallel_query(self, hashes, k=1, num_workers=8):
         with Pool(num_workers) as p:
@@ -231,7 +236,6 @@ class TileDatabaseV2:
         
         for db_tile_hashes, db_n_range in zip(self.hashes, self.n_ranges):
             query_overlap, db_overlap = n_range_overlap_slice(query_n_range, db_n_range)
-            print(query_n_range, db_n_range)
             query_hashes = query_tile_hashes[query_overlap[Y][0]:query_overlap[Y][1],
                                              query_overlap[X][0]:query_overlap[X][1]]
             
@@ -255,24 +259,33 @@ class TileDatabaseV2:
         return return_data
     
     def similarity_score(self, image, hasher, query_anchor, index):
+        indices = (self.indices == index) * np.arange(len(self.indices))
         query_tiles, query_n_range = tilize_by_anchors(image, self.n_breaks, query_anchor)
         grid_shape = (query_n_range[Y2] - query_n_range[Y1], query_n_range[X2] - query_n_range[X1])
         query_tile_hashes = hasher(query_tiles).reshape(*grid_shape, -1)
 
-        db_tile_hashes = self.hashes[index]
-        db_n_range = self.n_ranges[index]
+        similarities = []
+        similarity_grids = []
+        for db_tile_hashes, db_n_range in zip(self.hashes[indices], self.n_ranges[indices]):
+            query_overlap, db_overlap = n_range_overlap_slice(query_n_range, db_n_range)
+            
+            query_hashes = query_tile_hashes[query_overlap[Y][0]:query_overlap[Y][1],
+                                             query_overlap[X][0]:query_overlap[X][1]]
 
-        query_overlap, db_overlap = n_range_overlap_slice(query_n_range, db_n_range)
-        query_hashes = query_tile_hashes[query_overlap[Y][0]:query_overlap[Y][1],
-                                         query_overlap[X][0]:query_overlap[X][1]]
-        db_hashes = db_tile_hashes[db_overlap[Y][0]:db_overlap[Y][1],
-                                    db_overlap[X][0]:db_overlap[X][1]]
-        
-        similarity_grid = (query_hashes == db_hashes).mean(2)
+            db_hashes = db_tile_hashes[db_overlap[Y][0]:db_overlap[Y][1],
+                                       db_overlap[X][0]:db_overlap[X][1]]
+            
+            similarity_grid = (query_hashes == db_hashes).mean(2)
+            similarity = similarity_grid.mean()
+
+            similarity_grids.append(similarity_grid)
+            similarities.append(similarity)
 
         return_data = {
-            "similarity_grid": similarity_grid,
-            "score": similarity_grid.mean()
+            "matches": [{
+                "score": similarity,
+                "similarity_grid": similarity_grid
+                } for similarity, similarity_grid in zip(similarities, similarity_grids)],
         }
         return return_data
     

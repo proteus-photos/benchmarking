@@ -1,0 +1,27 @@
+cuda
+Step [1/7], Train Loss: 1.695607
+Epoch [1/100], Train Loss: 1.670041, Val Loss: 0.092194
+Step [1/7], Train Loss: 1.584694
+Epoch [2/100], Train Loss: 1.597647, Val Loss: 0.082781
+Traceback (most recent call last):
+  File "/home/singh/benchmarking/train_anchor.py", line 329, in <module>
+    for step_no, (images, image1s, state1s, image2s, state2s) in enumerate(train_loader):
+  File "/home/singh/miniconda3/envs/proteus/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 630, in __next__
+    data = self._next_data()
+  File "/home/singh/miniconda3/envs/proteus/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1327, in _next_data
+    idx, data = self._get_data()
+  File "/home/singh/miniconda3/envs/proteus/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1293, in _get_data
+    success, data = self._try_get_data()
+  File "/home/singh/miniconda3/envs/proteus/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1131, in _try_get_data
+    data = self._data_queue.get(timeout=timeout)
+  File "/home/singh/miniconda3/envs/proteus/lib/python3.10/multiprocessing/queues.py", line 113, in get
+    if not self._poll(timeout):
+  File "/home/singh/miniconda3/envs/proteus/lib/python3.10/multiprocessing/connection.py", line 257, in poll
+    return self._poll(timeout)
+  File "/home/singh/miniconda3/envs/proteus/lib/python3.10/multiprocessing/connection.py", line 424, in _poll
+    r = wait([self], timeout)
+  File "/home/singh/miniconda3/envs/proteus/lib/python3.10/multiprocessing/connection.py", line 931, in wait
+    ready = selector.select(timeout)
+  File "/home/singh/miniconda3/envs/proteus/lib/python3.10/selectors.py", line 416, in select
+    fd_event_list = self._selector.poll(timeout)
+KeyboardInterrupt

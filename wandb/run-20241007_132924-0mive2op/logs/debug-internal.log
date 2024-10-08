@@ -1,0 +1,20 @@
+{"time":"2024-10-07T13:29:24.139414643Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-10-07T13:29:24.139431942Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20241007_132924-0mive2op/logs/debug-core.log"}
+{"time":"2024-10-07T13:29:24.139483541Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-10-07T13:29:24.13949013Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20241007_132924-0mive2op/logs/debug-core.log"}
+{"time":"2024-10-07T13:29:24.145680783Z","level":"INFO","msg":"created new stream","id":"0mive2op"}
+{"time":"2024-10-07T13:29:24.145704307Z","level":"INFO","msg":"stream: started","id":"0mive2op"}
+{"time":"2024-10-07T13:29:24.145740624Z","level":"INFO","msg":"handler: started","stream_id":{"value":"0mive2op"}}
+{"time":"2024-10-07T13:29:24.145820156Z","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"0mive2op"}}
+{"time":"2024-10-07T13:29:24.14587958Z","level":"INFO","msg":"sender: started","stream_id":{"value":"0mive2op"}}
+{"time":"2024-10-07T13:29:24.538269184Z","level":"INFO","msg":"wandb-core","!BADKEY":null}
+{"time":"2024-10-07T13:29:24.551658596Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-10-07T17:22:55.337904379Z","level":"INFO","msg":"api: retrying HTTP error","status":502,"url":"https://api.wandb.ai/files/singhishree/standard%20LR/0mive2op/file_stream"}
+{"time":"2024-10-07T17:37:49.759623529Z","level":"INFO","msg":"api: retrying HTTP error","status":502,"url":"https://api.wandb.ai/files/singhishree/standard%20LR/0mive2op/file_stream"}
+{"time":"2024-10-07T17:54:20.322928097Z","level":"INFO","msg":"stream: closing","id":"0mive2op"}
+{"time":"2024-10-07T17:54:20.322963627Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-10-07T17:54:20.323380651Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-10-07T17:54:22.525530747Z","level":"INFO","msg":"handler: closed","stream_id":{"value":"0mive2op"}}
+{"time":"2024-10-07T17:54:22.525581888Z","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"0mive2op"}}
+{"time":"2024-10-07T17:54:22.525670975Z","level":"INFO","msg":"sender: closed","stream_id":{"value":"0mive2op"}}
+{"time":"2024-10-07T17:54:22.525682071Z","level":"INFO","msg":"stream: closed","id":"0mive2op"}

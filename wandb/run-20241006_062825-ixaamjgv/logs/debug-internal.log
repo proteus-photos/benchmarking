@@ -1,0 +1,19 @@
+{"time":"2024-10-06T06:28:25.441922143Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-10-06T06:28:25.441944176Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20241006_062825-ixaamjgv/logs/debug-core.log"}
+{"time":"2024-10-06T06:28:25.441996271Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-10-06T06:28:25.442011251Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20241006_062825-ixaamjgv/logs/debug-core.log"}
+{"time":"2024-10-06T06:28:25.488567537Z","level":"INFO","msg":"created new stream","id":"ixaamjgv"}
+{"time":"2024-10-06T06:28:25.488596989Z","level":"INFO","msg":"stream: started","id":"ixaamjgv"}
+{"time":"2024-10-06T06:28:25.488628398Z","level":"INFO","msg":"handler: started","stream_id":{"value":"ixaamjgv"}}
+{"time":"2024-10-06T06:28:25.488717367Z","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"ixaamjgv"}}
+{"time":"2024-10-06T06:28:25.488846994Z","level":"INFO","msg":"sender: started","stream_id":{"value":"ixaamjgv"}}
+{"time":"2024-10-06T06:28:25.85793362Z","level":"INFO","msg":"wandb-core","!BADKEY":null}
+{"time":"2024-10-06T06:28:25.860148986Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-10-06T08:11:41.683129461Z","level":"INFO","msg":"api: retrying HTTP error","status":502,"url":"https://api.wandb.ai/files/singhishree/standard%20LR/ixaamjgv/file_stream"}
+{"time":"2024-10-06T10:50:46.468966373Z","level":"INFO","msg":"stream: closing","id":"ixaamjgv"}
+{"time":"2024-10-06T10:50:46.468996128Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-10-06T10:50:46.469230676Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-10-06T10:50:48.635824747Z","level":"INFO","msg":"handler: closed","stream_id":{"value":"ixaamjgv"}}
+{"time":"2024-10-06T10:50:48.635869513Z","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"ixaamjgv"}}
+{"time":"2024-10-06T10:50:48.635948707Z","level":"INFO","msg":"sender: closed","stream_id":{"value":"ixaamjgv"}}
+{"time":"2024-10-06T10:50:48.635959711Z","level":"INFO","msg":"stream: closed","id":"ixaamjgv"}

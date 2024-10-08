@@ -1,0 +1,20 @@
+{"time":"2024-10-06T02:04:16.590198258Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-10-06T02:04:16.590221096Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20241006_020416-svc92cp6/logs/debug-core.log"}
+{"time":"2024-10-06T02:04:16.590295678Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-10-06T02:04:16.590303726Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20241006_020416-svc92cp6/logs/debug-core.log"}
+{"time":"2024-10-06T02:04:16.595001707Z","level":"INFO","msg":"created new stream","id":"svc92cp6"}
+{"time":"2024-10-06T02:04:16.595037692Z","level":"INFO","msg":"stream: started","id":"svc92cp6"}
+{"time":"2024-10-06T02:04:16.595071725Z","level":"INFO","msg":"handler: started","stream_id":{"value":"svc92cp6"}}
+{"time":"2024-10-06T02:04:16.595171388Z","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"svc92cp6"}}
+{"time":"2024-10-06T02:04:16.595248794Z","level":"INFO","msg":"sender: started","stream_id":{"value":"svc92cp6"}}
+{"time":"2024-10-06T02:04:16.987606913Z","level":"INFO","msg":"wandb-core","!BADKEY":null}
+{"time":"2024-10-06T02:04:16.99014085Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-10-06T04:20:49.984167978Z","level":"INFO","msg":"api: retrying HTTP error","status":502,"url":"https://api.wandb.ai/files/singhishree/standard%20LR/svc92cp6/file_stream"}
+{"time":"2024-10-06T04:20:54.885916024Z","level":"INFO","msg":"api: retrying HTTP error","status":502,"url":"https://api.wandb.ai/files/singhishree/standard%20LR/svc92cp6/file_stream"}
+{"time":"2024-10-06T06:26:11.238932594Z","level":"INFO","msg":"stream: closing","id":"svc92cp6"}
+{"time":"2024-10-06T06:26:11.238991536Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-10-06T06:26:11.239428446Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-10-06T06:26:13.350523758Z","level":"INFO","msg":"handler: closed","stream_id":{"value":"svc92cp6"}}
+{"time":"2024-10-06T06:26:13.350588726Z","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"svc92cp6"}}
+{"time":"2024-10-06T06:26:13.350678532Z","level":"INFO","msg":"sender: closed","stream_id":{"value":"svc92cp6"}}
+{"time":"2024-10-06T06:26:13.350806659Z","level":"INFO","msg":"stream: closed","id":"svc92cp6"}

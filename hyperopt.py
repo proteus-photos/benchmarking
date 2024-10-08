@@ -13,8 +13,9 @@ param_ranges = {
     # "min_margin": (0.1, 0.5),
     # "gamma": (0.05, 0.8),
     # "sharpness": (0.5, 5.0),
-    "lr1": (2, 7),
-    "lr2": (2, 3),
+    "lr1": (0.5, 5),
+    "lr2": (0.5, 3),
+    "t0" : (5, 20)
 }
 
 # Number of random trials
@@ -22,6 +23,7 @@ num_trials = int(1e9)
 
 # Function to extract validation loss from the script output
 def extract_validation_loss(output):
+    print(output)
     return float(output.split()[-1].strip().replace("RETURN_VALUE:", "").strip())
 
 import random
@@ -71,16 +73,14 @@ def run_script_with_live_output(cmd, output_file):
     return ''.join(stderr_output)
 
 os.makedirs("logs", exist_ok=True)
-# Perform random sampling and run trials
+
 results = []
 for trial in range(num_trials):
-    # Sample random values for each hyperparameter
     params = {
         param: random.uniform(range_min, range_max)
         for param, (range_min, range_max) in param_ranges.items()
     }
     
-    # Add a unique ID for each trial
     params["id"] = trial
     
     # Construct the command to run your script
