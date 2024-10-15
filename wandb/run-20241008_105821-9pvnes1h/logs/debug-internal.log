@@ -9,3 +9,10 @@
 {"time":"2024-10-08T10:58:21.415601658Z","level":"INFO","msg":"sender: started","stream_id":{"value":"9pvnes1h"}}
 {"time":"2024-10-08T10:58:21.88936205Z","level":"INFO","msg":"wandb-core","!BADKEY":null}
 {"time":"2024-10-08T10:58:21.908520737Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-10-08T14:22:41.251956305Z","level":"INFO","msg":"stream: closing","id":"9pvnes1h"}
+{"time":"2024-10-08T14:22:41.251988158Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-10-08T14:22:41.252193874Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-10-08T14:22:42.503442814Z","level":"INFO","msg":"handler: closed","stream_id":{"value":"9pvnes1h"}}
+{"time":"2024-10-08T14:22:42.503495789Z","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"9pvnes1h"}}
+{"time":"2024-10-08T14:22:42.503821681Z","level":"INFO","msg":"sender: closed","stream_id":{"value":"9pvnes1h"}}
+{"time":"2024-10-08T14:22:42.503873314Z","level":"INFO","msg":"stream: closed","id":"9pvnes1h"}

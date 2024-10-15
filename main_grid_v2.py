@@ -52,12 +52,12 @@ transformation = 'screenshot' #, 'double screenshot', 'jpeg', 'crop']
 hasher = neuralhash # dhash, phash, blockhash, whash
 
 dataset_folder = './dataset/imagenet/images'
-image_files = [f for f in os.listdir(dataset_folder)][:10_00]
+image_files = [f for f in os.listdir(dataset_folder)][:100]
 
 N_IMAGE_RETRIEVAL = 5
-N_BREAKS = 1
+N_BREAKSS = [2, 3, 4]
 MIN_MARGIN = 0.4
-N_TRANSFORMS = 7
+N_TRANSFORMS = 2
 
 parser = argparse.ArgumentParser(description ='Perform retrieval benchmarking based on grids.')
 parser.add_argument('-r', '--refresh', action='store_true')
@@ -99,27 +99,26 @@ if hasher.__name__ + ".npy" not in os.listdir("tile_databases") or args.refresh:
     # each image has a different grid size of hashes
     original_hashes = []
     n_ranges = []
-    for image, anchor_points in zip(tqdm(images), anchor_points_list):
-        tiles, n_range = tilize_by_anchors(image, N_BREAKS, anchor_points)
-        grid_shape = (n_range[Y2] - n_range[Y1], n_range[X2] - n_range[X1])
-        tile_hashes = hasher(tiles).reshape(*grid_shape, -1)
-        
-        original_hashes.append(tile_hashes)
-        n_ranges.append(n_range)
+    for N_BREAKS in N_BREAKSS:
+        for image, anchor_points in zip(tqdm(images), anchor_points_list):
+            tiles, n_range = tilize_by_anchors(image, N_BREAKS, anchor_points)
+            grid_shape = (n_range[Y2] - n_range[Y1], n_range[X2] - n_range[X1])
+            tile_hashes = hasher(tiles).reshape(*grid_shape, -1)
+            
+            original_hashes.append(tile_hashes)
+            n_ranges.append(n_range)
     
     indexes = np.arange(len(original_images))
-    indexes = np.repeat(indexes, N_TRANSFORMS)
+    indexes = np.repeat(indexes, N_TRANSFORMS * len(N_BREAKSS))
 
     metadata = {"anchors": anchor_points_list.tolist(), "n_ranges": n_ranges, "indices": indexes.tolist()}
-    database = TileDatabaseV2(original_hashes, storedir=f"tile_databases_v2/{hasher.__name__}", metadata=metadata, n_breaks=N_BREAKS)
+    database = TileDatabaseV2(original_hashes, storedir=f"tile_databases_v2/{hasher.__name__}", metadata=metadata, n_breaks=N_BREAKSS)
 else:
-    database = TileDatabaseV2(None, storedir=f"tile_databases_v2/{hasher.__name__}", n_breaks=N_BREAKS)
-
+    database = TileDatabaseV2(None, storedir=f"tile_databases_v2/{hasher.__name__}", n_breaks=N_BREAKSS)
 
 print("Computing top 5 accuracy...")
-print(len(database.anchors))
 
-transformed_images = [t.transform(image, transformation) for image in tqdm(images)]
+transformed_images = [t.transform(image, transformation) for image in original_images]
 anchor_points_list = chunk_call(model, torch.stack([transform(image) for image in transformed_images]), 256)
 anchor_points_list = reparametricize(anchor_points_list, MIN_MARGIN).numpy()
 
@@ -156,7 +155,7 @@ print(matches.mean(), matches.std())
 #         print("failed at", index, "with score", result)
 
 ### Evaluation without failures
-n_matches = sum([int(index in [point["index"] for point in result["matches"]]) for index, result in enumerate(results)])
+# n_matches = sum([int(index in [point["index"] for point in result["matches"]]) for index, result in enumerate(results)])
 
-print(f'{hasher.__name__} with {transformation} transformation:', n_matches / len(image_files))
+# print(f'{hasher.__name__} with {transformation} transformation:', n_matches / len(image_files))
 print("#############################################")

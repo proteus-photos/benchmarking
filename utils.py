@@ -112,6 +112,11 @@ def reparametricize(outs, MIN_MARGIN=None):
             (x1s + MIN_MARGIN) / (x1s + x2s + MIN_MARGIN),
             (y1s + MIN_MARGIN) / (y1s + y2s + MIN_MARGIN)
         )
+        ret = torch.stack(normalized, dim=1)
+        ret[:, 0] = 0
+        ret[:, 1] = 0
+        ret[:, 2] = 1
+        ret[:, 3] = 1
         
         return torch.stack(normalized, dim=1)
 

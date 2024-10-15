@@ -1,0 +1,19 @@
+{"time":"2024-10-08T15:40:52.595064156Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-10-08T15:40:52.595078124Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20241008_154052-0ceuiuwy/logs/debug-core.log"}
+{"time":"2024-10-08T15:40:52.595122703Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-10-08T15:40:52.595127339Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20241008_154052-0ceuiuwy/logs/debug-core.log"}
+{"time":"2024-10-08T15:40:52.595850212Z","level":"INFO","msg":"created new stream","id":"0ceuiuwy"}
+{"time":"2024-10-08T15:40:52.595871122Z","level":"INFO","msg":"stream: started","id":"0ceuiuwy"}
+{"time":"2024-10-08T15:40:52.595888588Z","level":"INFO","msg":"sender: started","stream_id":{"value":"0ceuiuwy"}}
+{"time":"2024-10-08T15:40:52.595896173Z","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"0ceuiuwy"}}
+{"time":"2024-10-08T15:40:52.595953246Z","level":"INFO","msg":"handler: started","stream_id":{"value":"0ceuiuwy"}}
+{"time":"2024-10-08T15:40:52.967557686Z","level":"INFO","msg":"wandb-core","!BADKEY":null}
+{"time":"2024-10-08T15:40:52.968625804Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-10-08T15:59:24.930115368Z","level":"INFO","msg":"api: retrying HTTP error","status":502,"url":"https://api.wandb.ai/files/singhishree/standard%20LR/0ceuiuwy/file_stream"}
+{"time":"2024-10-08T16:40:01.654535063Z","level":"INFO","msg":"stream: closing","id":"0ceuiuwy"}
+{"time":"2024-10-08T16:40:01.654564519Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-10-08T16:40:01.654756375Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-10-08T16:40:03.524357203Z","level":"INFO","msg":"handler: closed","stream_id":{"value":"0ceuiuwy"}}
+{"time":"2024-10-08T16:40:03.524432582Z","level":"INFO","msg":"sender: closed","stream_id":{"value":"0ceuiuwy"}}
+{"time":"2024-10-08T16:40:03.524413224Z","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"0ceuiuwy"}}
+{"time":"2024-10-08T16:40:03.524511837Z","level":"INFO","msg":"stream: closed","id":"0ceuiuwy"}

@@ -9,3 +9,10 @@
 {"time":"2024-10-08T11:17:54.371535581Z","level":"INFO","msg":"sender: started","stream_id":{"value":"h0g15jz6"}}
 {"time":"2024-10-08T11:17:54.779873008Z","level":"INFO","msg":"wandb-core","!BADKEY":null}
 {"time":"2024-10-08T11:17:54.794441723Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-10-08T14:32:59.767039282Z","level":"INFO","msg":"stream: closing","id":"h0g15jz6"}
+{"time":"2024-10-08T14:32:59.767101333Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-10-08T14:32:59.76725275Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-10-08T14:33:01.858599891Z","level":"INFO","msg":"handler: closed","stream_id":{"value":"h0g15jz6"}}
+{"time":"2024-10-08T14:33:01.858688203Z","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"h0g15jz6"}}
+{"time":"2024-10-08T14:33:01.858714282Z","level":"INFO","msg":"sender: closed","stream_id":{"value":"h0g15jz6"}}
+{"time":"2024-10-08T14:33:01.858841072Z","level":"INFO","msg":"stream: closed","id":"h0g15jz6"}

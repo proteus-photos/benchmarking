@@ -204,6 +204,9 @@ class TileDatabaseV2:
     def __init__(self, hashes=None, storedir=None, metadata=None, n_breaks=2):  
         # the hashes are stored as (n_images, n_tiles (col), n_tiles (row), hash_size)
         self.n_breaks = n_breaks
+        if type(n_breaks) is int:
+            self.n_breaks = [n_breaks]
+            
         if hashes is None:
             if storedir is None:
                 raise ValueError
@@ -221,10 +224,9 @@ class TileDatabaseV2:
                 with open(storedir+"_metadata.json", "w") as f:
                     json.dump(metadata, f)
 
-        self.anchors = self.metadata["anchors"]
-        self.n_ranges = self.metadata["n_ranges"]
-        self.indices = self.metadata["indices"]
-
+        self.anchors = np.array(self.metadata["anchors"])
+        self.n_ranges = np.array(self.metadata["n_ranges"])
+        self.indices = np.array(self.metadata["indices"])
 
     def query(self, image, hasher, query_anchor, K_RETRIEVAL=1, index=None):
         query_tiles, query_n_range = tilize_by_anchors(image, self.n_breaks, query_anchor)
@@ -258,28 +260,56 @@ class TileDatabaseV2:
         }
         return return_data
     
-    def similarity_score(self, image, hasher, query_anchor, index):
-        indices = (self.indices == index) * np.arange(len(self.indices))
-        query_tiles, query_n_range = tilize_by_anchors(image, self.n_breaks, query_anchor)
-        grid_shape = (query_n_range[Y2] - query_n_range[Y1], query_n_range[X2] - query_n_range[X1])
-        query_tile_hashes = hasher(query_tiles).reshape(*grid_shape, -1)
-
+    def similarity_score(self, image, hasher, query_anchor, index, flexible=False):
+        # if flexible is True then self.n_breaks is a list of multiple integers
+        indices = np.arange(len(self.indices))[self.indices == index]
         similarities = []
         similarity_grids = []
-        for db_tile_hashes, db_n_range in zip(self.hashes[indices], self.n_ranges[indices]):
-            query_overlap, db_overlap = n_range_overlap_slice(query_n_range, db_n_range)
-            
-            query_hashes = query_tile_hashes[query_overlap[Y][0]:query_overlap[Y][1],
-                                             query_overlap[X][0]:query_overlap[X][1]]
 
-            db_hashes = db_tile_hashes[db_overlap[Y][0]:db_overlap[Y][1],
-                                       db_overlap[X][0]:db_overlap[X][1]]
-            
-            similarity_grid = (query_hashes == db_hashes).mean(2)
-            similarity = similarity_grid.mean()
+        for n_breaks in self.n_breaks:
+            query_tiles, query_n_range = tilize_by_anchors(image, n_breaks, query_anchor)
 
-            similarity_grids.append(similarity_grid)
-            similarities.append(similarity)
+            grid_shape = (query_n_range[Y2] - query_n_range[Y1], query_n_range[X2] - query_n_range[X1])
+            query_tile_hashes = hasher(query_tiles).reshape(*grid_shape, -1)
+
+            for db_tile_hashes, db_n_range in [(self.hashes[index], self.n_ranges[index]) for index in indices]:
+                query_overlap, db_overlap = n_range_overlap_slice(query_n_range, db_n_range)
+                
+                if not flexible:
+                    query_hashes = query_tile_hashes[query_overlap[Y][0]:query_overlap[Y][1],
+                                                     query_overlap[X][0]:query_overlap[X][1]]
+
+                    db_hashes = db_tile_hashes[db_overlap[Y][0]:db_overlap[Y][1],
+                                               db_overlap[X][0]:db_overlap[X][1]]
+
+                    similarity_grid = (query_hashes == db_hashes).mean(2)
+                    similarity = similarity_grid.mean()
+
+                    similarity_grids.append(similarity_grid)
+                    similarities.append(similarity)
+
+                else:
+                    if query_tile_hashes.shape[0] < db_tile_hashes.shape[0]:
+                        smaller = query_tile_hashes
+                        bigger = db_tile_hashes
+                    else:
+                        smaller = db_tile_hashes
+                        bigger = query_tile_hashes
+                    
+                    m, n = bigger.shape
+                    fm, fn = smaller.shape
+                    
+                    output_rows = m - fm + 1
+                    output_cols = n - fn + 1
+                    
+                    output = np.zeros((output_rows, output_cols))
+                    
+                    for i in range(output_rows):
+                        for j in range(output_cols):
+                            output[i, j] = (bigger[i:i+fm, j:j+fn] * smaller).mean()
+                
+                    similarities.append(output.max())
+                    similarity_grids.append(None)
 
         return_data = {
             "matches": [{

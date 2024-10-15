@@ -9,3 +9,10 @@
 {"time":"2024-10-08T11:21:40.603479836Z","level":"INFO","msg":"sender: started","stream_id":{"value":"0uxbnthh"}}
 {"time":"2024-10-08T11:21:41.04324697Z","level":"INFO","msg":"wandb-core","!BADKEY":null}
 {"time":"2024-10-08T11:21:41.059927751Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-10-08T14:35:59.685256678Z","level":"INFO","msg":"stream: closing","id":"0uxbnthh"}
+{"time":"2024-10-08T14:35:59.685398609Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-10-08T14:35:59.685841496Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-10-08T14:36:01.7955682Z","level":"INFO","msg":"handler: closed","stream_id":{"value":"0uxbnthh"}}
+{"time":"2024-10-08T14:36:01.795642389Z","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"0uxbnthh"}}
+{"time":"2024-10-08T14:36:01.795779313Z","level":"INFO","msg":"sender: closed","stream_id":{"value":"0uxbnthh"}}
+{"time":"2024-10-08T14:36:01.795828859Z","level":"INFO","msg":"stream: closed","id":"0uxbnthh"}

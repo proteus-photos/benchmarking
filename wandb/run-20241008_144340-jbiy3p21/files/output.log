@@ -1,0 +1,10 @@
+cuda
+Step [1/63], Train Loss: 1.651704
+Epoch [1/100], Train Loss: 1.607626, Val Loss: 0.088053
+Step [1/63], Train Loss: 1.760695
+Epoch [2/100], Train Loss: 1.574310, Val Loss: 0.085165
+Step [1/63], Train Loss: 1.608345
+Epoch [3/100], Train Loss: 1.556718, Val Loss: 0.085438
+Step [1/63], Train Loss: 1.548147
+Epoch [4/100], Train Loss: 1.513095, Val Loss: 0.080425
+Step [1/63], Train Loss: 1.571151

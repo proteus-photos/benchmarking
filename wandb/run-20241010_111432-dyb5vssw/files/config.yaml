@@ -1,0 +1,42 @@
+_wandb:
+    value:
+        cli_version: 0.18.1
+        m: []
+        python_version: 3.10.14
+        t:
+            "1":
+                - 1
+                - 41
+                - 55
+            "2":
+                - 1
+                - 41
+                - 55
+            "3":
+                - 16
+                - 23
+                - 55
+            "4": 3.10.14
+            "5": 0.18.1
+            "8":
+                - 5
+            "12": 0.18.1
+            "13": linux-x86_64
+gamma:
+    value: 0.4
+i_coeff:
+    value: 0.2
+id:
+    value: 64
+lr1:
+    value: 3.5734142979663823
+lr2:
+    value: 1.9156182552017027
+o_coeff:
+    value: 2
+sharpness:
+    value: 5
+t0:
+    value: 11.410507968139296
+w_coeff:
+    value: 4
