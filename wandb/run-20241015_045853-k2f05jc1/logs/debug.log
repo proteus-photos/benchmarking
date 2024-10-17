@@ -23,3 +23,4 @@ config: {'w_coeff': 4.0, 'i_coeff': 0.2, 'o_coeff': 2.0, 'gamma': 0.4, 'sharpnes
 2024-10-15 04:58:55,774 INFO    MainThread:2196583 [wandb_run.py:_redirect():2372] Wrapping output streams.
 2024-10-15 04:58:55,774 INFO    MainThread:2196583 [wandb_run.py:_redirect():2397] Redirects installed.
 2024-10-15 04:58:55,776 INFO    MainThread:2196583 [wandb_init.py:init():900] run started, returning control to user process
+2024-10-15 06:03:30,823 WARNING MsgRouterThr:2196583 [router.py:message_loop():77] message_loop has been closed

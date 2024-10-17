@@ -52,12 +52,13 @@ transformation = 'screenshot' #, 'double screenshot', 'jpeg', 'crop']
 hasher = neuralhash # dhash, phash, blockhash, whash
 
 dataset_folder = './dataset/imagenet/images'
-image_files = [f for f in os.listdir(dataset_folder)][:100]
+image_files = [f for f in os.listdir(dataset_folder)][:1000]
 
 N_IMAGE_RETRIEVAL = 5
-N_BREAKSS = [2, 3, 4]
+N_BREAKSS = [1]
+print(N_BREAKSS)
 MIN_MARGIN = 0.4
-N_TRANSFORMS = 2
+N_TRANSFORMS = 3
 
 parser = argparse.ArgumentParser(description ='Perform retrieval benchmarking based on grids.')
 parser.add_argument('-r', '--refresh', action='store_true')
@@ -65,8 +66,10 @@ parser.add_argument('-r', '--refresh', action='store_true')
 args = parser.parse_args()
 
 t = Transformer()
-model = create_model("finetuned_mobilenetv3.pth", backbone="mobilenet_old")
-model.eval()
+# model = create_model("finetuned_mobilenetv3.pth", backbone="mobilenet_old")
+# model.eval()
+
+model = None
 
 original_images = [copy.deepcopy(Image.open(os.path.join(dataset_folder, image_file)).convert("RGB")) for image_file in image_files]
 
@@ -93,14 +96,16 @@ if hasher.__name__ + ".npy" not in os.listdir("tile_databases") or args.refresh:
     image_arrays = [transform(image) for image in tqdm(images)]
     anchor_points_list = chunk_call(model, torch.stack(image_arrays), 256)
     anchor_points_list = reparametricize(anchor_points_list, MIN_MARGIN).numpy()
+    anchor_points_list = np.repeat(anchor_points_list, len(N_BREAKSS), axis=0)
 
     del image_arrays
 
     # each image has a different grid size of hashes
     original_hashes = []
     n_ranges = []
-    for N_BREAKS in N_BREAKSS:
-        for image, anchor_points in zip(tqdm(images), anchor_points_list):
+    
+    for image, anchor_points in zip(tqdm(images), anchor_points_list):
+        for N_BREAKS in N_BREAKSS:
             tiles, n_range = tilize_by_anchors(image, N_BREAKS, anchor_points)
             grid_shape = (n_range[Y2] - n_range[Y1], n_range[X2] - n_range[X1])
             tile_hashes = hasher(tiles).reshape(*grid_shape, -1)
@@ -110,6 +115,8 @@ if hasher.__name__ + ".npy" not in os.listdir("tile_databases") or args.refresh:
     
     indexes = np.arange(len(original_images))
     indexes = np.repeat(indexes, N_TRANSFORMS * len(N_BREAKSS))
+    print(len(original_hashes), len(indexes), len(n_ranges), len(anchor_points_list))
+    print(indexes)
 
     metadata = {"anchors": anchor_points_list.tolist(), "n_ranges": n_ranges, "indices": indexes.tolist()}
     database = TileDatabaseV2(original_hashes, storedir=f"tile_databases_v2/{hasher.__name__}", metadata=metadata, n_breaks=N_BREAKSS)
@@ -125,10 +132,11 @@ anchor_points_list = reparametricize(anchor_points_list, MIN_MARGIN).numpy()
 ### Evaluation for true hamming distance
 matches = []
 for index, (transformed_image, anchor_points) in enumerate(zip(tqdm(transformed_images), anchor_points_list)):
-    match = database.similarity_score(transformed_image, hasher, anchor_points, index)["matches"]
+    match = database.similarity_score(transformed_image, hasher, anchor_points, index, flexible=True)["matches"]
     matches.append(max(point["score"] for point in match))
 
 matches = np.array(matches)
+print(N_BREAKSS)
 print(matches.mean(), matches.std())
 
 # chunks_of = 100

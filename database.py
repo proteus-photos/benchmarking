@@ -204,8 +204,7 @@ class TileDatabaseV2:
     def __init__(self, hashes=None, storedir=None, metadata=None, n_breaks=2):  
         # the hashes are stored as (n_images, n_tiles (col), n_tiles (row), hash_size)
         self.n_breaks = n_breaks
-        if type(n_breaks) is int:
-            self.n_breaks = [n_breaks]
+
             
         if hashes is None:
             if storedir is None:
@@ -273,9 +272,9 @@ class TileDatabaseV2:
             query_tile_hashes = hasher(query_tiles).reshape(*grid_shape, -1)
 
             for db_tile_hashes, db_n_range in [(self.hashes[index], self.n_ranges[index]) for index in indices]:
-                query_overlap, db_overlap = n_range_overlap_slice(query_n_range, db_n_range)
-                
                 if not flexible:
+                    query_overlap, db_overlap = n_range_overlap_slice(query_n_range, db_n_range)
+
                     query_hashes = query_tile_hashes[query_overlap[Y][0]:query_overlap[Y][1],
                                                      query_overlap[X][0]:query_overlap[X][1]]
 
@@ -296,8 +295,8 @@ class TileDatabaseV2:
                         smaller = db_tile_hashes
                         bigger = query_tile_hashes
                     
-                    m, n = bigger.shape
-                    fm, fn = smaller.shape
+                    m, n, _ = bigger.shape
+                    fm, fn, _ = smaller.shape
                     
                     output_rows = m - fm + 1
                     output_cols = n - fn + 1
@@ -306,8 +305,8 @@ class TileDatabaseV2:
                     
                     for i in range(output_rows):
                         for j in range(output_cols):
-                            output[i, j] = (bigger[i:i+fm, j:j+fn] * smaller).mean()
-                
+                            output[i, j] = (bigger[i:i+fm, j:j+fn] == smaller).mean()
+
                     similarities.append(output.max())
                     similarity_grids.append(None)
 

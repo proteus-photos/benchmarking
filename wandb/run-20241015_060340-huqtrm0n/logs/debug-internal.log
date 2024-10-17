@@ -1,0 +1,11 @@
+{"time":"2024-10-15T06:03:40.449348492Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-10-15T06:03:40.449363916Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20241015_060340-huqtrm0n/logs/debug-core.log"}
+{"time":"2024-10-15T06:03:40.449415618Z","level":"INFO","msg":"using version","core version":"0.18.1"}
+{"time":"2024-10-15T06:03:40.449420494Z","level":"INFO","msg":"created symlink","path":"/home/singh/benchmarking/wandb/run-20241015_060340-huqtrm0n/logs/debug-core.log"}
+{"time":"2024-10-15T06:03:40.450237458Z","level":"INFO","msg":"created new stream","id":"huqtrm0n"}
+{"time":"2024-10-15T06:03:40.450263147Z","level":"INFO","msg":"stream: started","id":"huqtrm0n"}
+{"time":"2024-10-15T06:03:40.450282269Z","level":"INFO","msg":"handler: started","stream_id":{"value":"huqtrm0n"}}
+{"time":"2024-10-15T06:03:40.450351415Z","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"huqtrm0n"}}
+{"time":"2024-10-15T06:03:40.450397391Z","level":"INFO","msg":"sender: started","stream_id":{"value":"huqtrm0n"}}
+{"time":"2024-10-15T06:03:40.848793181Z","level":"INFO","msg":"wandb-core","!BADKEY":null}
+{"time":"2024-10-15T06:03:40.850693015Z","level":"INFO","msg":"Starting system monitor"}

@@ -118,7 +118,7 @@ def reparametricize(outs, MIN_MARGIN=None):
         ret[:, 2] = 1
         ret[:, 3] = 1
         
-        return torch.stack(normalized, dim=1)
+        return ret
 
 def match(original_hash, modified_hash):
     # difference = original_hash ^ modified_hash
@@ -222,6 +222,8 @@ def tilize_by_anchors(image, n_breaks, anchors):
 
 @torch.no_grad
 def chunk_call(model, inputs, batchsize=256):
+    if model is None:
+        return torch.zeros(inputs.size(0), 4)
     outputs = []
     for i in range(0, len(inputs), batchsize):
         outputs.append(model(inputs[i:i+batchsize].cuda()).cpu())
