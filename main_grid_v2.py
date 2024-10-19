@@ -19,7 +19,8 @@ from hashes.dhash import dhash
 from hashes.ahash import ahash
 from hashes.phash import phash
 from hashes.whash import whash
-from hashes.neuralhash import neuralhash #, initialize_session
+# from hashes.neuralhash import neuralhash #, initialize_session
+from hashes.dinohash import dinohash as neuralhash
 
 """
 Gridded version but with grid aligned to anchor points
@@ -115,7 +116,6 @@ if hasher.__name__ + ".npy" not in os.listdir("tile_databases") or args.refresh:
     
     indexes = np.arange(len(original_images))
     indexes = np.repeat(indexes, N_TRANSFORMS * len(N_BREAKSS))
-    print(len(original_hashes), len(indexes), len(n_ranges), len(anchor_points_list))
     print(indexes)
 
     metadata = {"anchors": anchor_points_list.tolist(), "n_ranges": n_ranges, "indices": indexes.tolist()}

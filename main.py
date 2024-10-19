@@ -17,12 +17,13 @@ from hashes.ahash import ahash
 from hashes.phash import phash
 from hashes.whash import whash
 from hashes.neuralhash import neuralhash
+from hashes.dinohash import dinohash
 
 transformation = 'screenshot' #, 'double screenshot', 'jpeg', 'crop']
-hasher = neuralhash # dhash, phash, blockhash, whash
+hasher = dinohash # dhash, phash, blockhash, whash
 
 dataset_folder = './dataset/imagenet/images'
-image_files = [f for f in os.listdir(dataset_folder)][:1000]
+image_files = [f for f in os.listdir(dataset_folder)][:50_000]
 
 N_IMAGE_RETRIEVAL = 5
 
@@ -47,27 +48,27 @@ else:
 
 ### Evaluate Hamming distance
 
-transformed_images = [t.transform(Image.open(os.path.join(dataset_folder, image_file)).convert("RGB"), transformation) for image_file in image_files]
-hashes = hasher(transformed_images)
-not_hashes = hashes[::-1]
+# transformed_images = [t.transform(Image.open(os.path.join(dataset_folder, image_file)).convert("RGB"), transformation) for image_file in tqdm(image_files)]
+# hashes = hasher(transformed_images)
+# not_hashes = hashes[::-1]
 
-matches = db.similarity_score(hashes)
-print("True:")
-print(matches.mean(), matches.std())
+# matches = db.similarity_score(hashes)
+# print("True:")
+# print(matches.mean(), matches.std())
 
-not_matches = db.similarity_score(not_hashes)
-print("False:")
-print(not_matches.mean(), not_matches.std())
+# not_matches = db.similarity_score(not_hashes)
+# print("False:")
+# print(not_matches.mean(), not_matches.std())
 
-# n_matches = 0
-# print("Computing top 5 accuracy...")
-# for index, image_file in enumerate(tqdm(image_files)):
-#     image = Image.open(os.path.join(dataset_folder, image_file)).convert("RGB")
-#     transformed_image = t.transform(image, transformation)
-#     modified_hash = hasher([transformed_image])[0]
-#     result = db.query(modified_hash, k=N_IMAGE_RETRIEVAL)
-#     if index in [point["index"] for point in result]:
-#         n_matches += 1
+n_matches = 0
+print("Computing top 5 accuracy...")
+for index, image_file in enumerate(tqdm(image_files)):
+    image = Image.open(os.path.join(dataset_folder, image_file)).convert("RGB")
+    transformed_image = t.transform(image, transformation)
+    modified_hash = hasher([transformed_image])[0]
+    result = db.query(modified_hash, k=N_IMAGE_RETRIEVAL)
+    if index in [point["index"] for point in result]:
+        n_matches += 1
 
-#     gc.collect()
-# print(f'{hasher.__name__} with {transformation} transformation:', n_matches / len(image_files))
+    gc.collect()
+print(f'{hasher.__name__} with {transformation} transformation:', n_matches / len(image_files))

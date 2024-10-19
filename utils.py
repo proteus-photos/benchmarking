@@ -221,10 +221,10 @@ def tilize_by_anchors(image, n_breaks, anchors):
     return tiles, [int(num) for num in n_range]
 
 @torch.no_grad
-def chunk_call(model, inputs, batchsize=256):
+def chunk_call(model, inputs, batchsize=128):
     if model is None:
         return torch.zeros(inputs.size(0), 4)
     outputs = []
-    for i in range(0, len(inputs), batchsize):
+    for i in tqdm(range(0, len(inputs), batchsize)):
         outputs.append(model(inputs[i:i+batchsize].cuda()).cpu())
     return torch.cat(outputs)
