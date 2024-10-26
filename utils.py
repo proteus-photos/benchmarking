@@ -194,8 +194,10 @@ def tilize(image, n_tiles):
 
 def tilize_by_anchors(image, n_breaks, anchors):
     width, height = image.size
-    tile_width  = (anchors[X2] - anchors[X1])/n_breaks
-    tile_height = (anchors[Y2] - anchors[Y1])/n_breaks
+
+    tile_width  = float((anchors[X2] - anchors[X1])/n_breaks)
+    tile_height = float((anchors[Y2] - anchors[Y1])/n_breaks)
+
 
     # compute number of grid lines in left and right directions
     n_max_pos_width = (1 - anchors[X1] + 1e-6) // tile_width
@@ -214,7 +216,7 @@ def tilize_by_anchors(image, n_breaks, anchors):
     
     tile_width *= width
     tile_height *= height
-    
+
     tiles = [image.crop((x, y, x+tile_width, y+tile_height)) for y in height_values[:-1] for x in width_values[:-1]]
     n_range = (n_max_neg_width, n_max_neg_height, n_max_pos_width, n_max_pos_height) #ltrb
 

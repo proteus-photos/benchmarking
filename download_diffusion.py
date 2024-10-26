@@ -154,6 +154,7 @@ def unzip_file(file: str):
     """
     try:
         shutil.unpack_archive(file, "./diffusion_data")
+        os.remove(file)
     except shutil.ReadError:
         print(f"Error unpacking {file}")
         return

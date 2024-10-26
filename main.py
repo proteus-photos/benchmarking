@@ -5,6 +5,8 @@ from matplotlib import pyplot as plt
 from tqdm import tqdm
 import gc
 import argparse
+from sklearn.decomposition import PCA
+import joblib
 
 from transformer import Transformer
 from hashes.blockhash import blockhash
@@ -18,14 +20,17 @@ from hashes.phash import phash
 from hashes.whash import whash
 from hashes.neuralhash import neuralhash
 from hashes.dinohash import dinohash
+from torch.utils.data import Dataset, DataLoader
+from torchvision.transforms import ToTensor
 
-transformation = 'screenshot' #, 'double screenshot', 'jpeg', 'crop']
+transformation = 'jpeg' #, 'double screenshot', 'jpeg', 'crop']
 hasher = dinohash # dhash, phash, blockhash, whash
 
-dataset_folder = './dataset/imagenet/images'
-image_files = [f for f in os.listdir(dataset_folder)][:50_000]
+dataset_folder = './diffusion_data'
+image_files = [f for f in os.listdir(dataset_folder)][:10_000]
 
-N_IMAGE_RETRIEVAL = 5
+BATCH_SIZE = 256
+N_IMAGE_RETRIEVAL = 1
 
 parser = argparse.ArgumentParser(description ='Perform retrieval benchmarking.')
 parser.add_argument('-r', '--refresh', action='store_true')
@@ -38,10 +43,21 @@ os.makedirs("databases", exist_ok=True)
 if hasher.__name__ + ".npy" not in os.listdir("databases") or args.refresh:
     print("Creating database for", hasher.__name__)
     original_hashes = []
-    for image_file in tqdm(image_files):
-        image = Image.open(os.path.join(dataset_folder, image_file)).convert("RGB")
-        original_hashes.append(hasher([image])[0])
+    image_file_batches = (image_files[i:i+BATCH_SIZE] for i in range(0, len(image_files), BATCH_SIZE))
+
+    for image_file_batch in tqdm(image_file_batches, total=len(image_files)//BATCH_SIZE):
+        images = [Image.open(os.path.join(dataset_folder, image_file)).convert("RGB") for image_file in image_file_batch]
+        original_hashes.extend(hasher(images, defense=False))
         gc.collect()
+
+    # pca = PCA(n_components=512)
+    
+    # Fit PCA model and transform the data
+    # transformed_features = pca.fit_transform(original_hashes)
+    
+    # weights = pca.components_
+    # np.save(f"./hashes/dinoPCA", weights)
+
     db = Database(original_hashes, storedir=f"databases/{hasher.__name__}")
 else:
     db = Database(None, storedir=f"databases/{hasher.__name__}")
@@ -60,15 +76,43 @@ else:
 # print("False:")
 # print(not_matches.mean(), not_matches.std())
 
-n_matches = 0
-print("Computing top 5 accuracy...")
-for index, image_file in enumerate(tqdm(image_files)):
-    image = Image.open(os.path.join(dataset_folder, image_file)).convert("RGB")
-    transformed_image = t.transform(image, transformation)
-    modified_hash = hasher([transformed_image])[0]
-    result = db.query(modified_hash, k=N_IMAGE_RETRIEVAL)
-    if index in [point["index"] for point in result]:
-        n_matches += 1
+# n_matches = 0
+# print(f"Computing top {N_IMAGE_RETRIEVAL} accuracy...")
+# for index, image_file in enumerate(tqdm(image_files)):
+#     image = Image.open(os.path.join(dataset_folder, image_file)).convert("RGB")
+#     transformed_image = t.transform(image, transformation)
+#     modified_hash = hasher([transformed_image])[0]
+#     result = db.query(modified_hash, k=N_IMAGE_RETRIEVAL)
+#     if index in [point["index"] for point in result]:
+#         n_matches += 1
 
-    gc.collect()
+#     gc.collect()
+
+print(f"Computing top {N_IMAGE_RETRIEVAL} accuracy...")
+modified_hashes = []
+
+image_file_batches = (image_files[i:i+BATCH_SIZE] for i in range(0, len(image_files), BATCH_SIZE))
+
+for image_file_batch in tqdm(image_file_batches, total=len(image_files)//BATCH_SIZE):
+    images = [Image.open(os.path.join(dataset_folder, image_file)).convert("RGB") for image_file in image_file_batch]
+    transformed_images = [t.transform(image, transformation) for image in images]
+    modified_hashes_batch = hasher(transformed_images, defense=False).tolist()
+    modified_hashes.extend(modified_hashes_batch)
+
+modified_hashes = np.array(modified_hashes)
+
+matches = db.similarity_score(modified_hashes)
+inv_matches = db.similarity_score(modified_hashes[::-1])
+
+print(matches.mean(), matches.std())
+print(inv_matches.mean(), inv_matches.std())
+np.save(f"matches_{hasher.__name__}_{transformation}.npy", matches)
+np.save(f"inv_matches_{hasher.__name__}_{transformation}.npy", inv_matches)
+
+while True:
+    tau = input("Enter tau: ")
+    print("fnr:", np.mean(matches < float(tau)))
+    print("fpr:", np.mean(inv_matches > float(tau)))
+
+
 print(f'{hasher.__name__} with {transformation} transformation:', n_matches / len(image_files))

@@ -20,7 +20,7 @@ from hashes.ahash import ahash
 from hashes.phash import phash
 from hashes.whash import whash
 # from hashes.neuralhash import neuralhash #, initialize_session
-from hashes.dinohash import dinohash as neuralhash
+from hashes.dinohash import dinohash
 
 """
 Gridded version but with grid aligned to anchor points
@@ -49,17 +49,17 @@ def evaluate_model(image):
     del image_array
     return anchor_points
 
-transformation = 'screenshot' #, 'double screenshot', 'jpeg', 'crop']
-hasher = neuralhash # dhash, phash, blockhash, whash
+transformation = 'screenshot'
+hasher = dinohash
 
 dataset_folder = './dataset/imagenet/images'
-image_files = [f for f in os.listdir(dataset_folder)][:1000]
+image_files = [f for f in os.listdir(dataset_folder)][:50_000]
 
 N_IMAGE_RETRIEVAL = 5
 N_BREAKSS = [1]
 print(N_BREAKSS)
 MIN_MARGIN = 0.4
-N_TRANSFORMS = 3
+N_TRANSFORMS = 1
 
 parser = argparse.ArgumentParser(description ='Perform retrieval benchmarking based on grids.')
 parser.add_argument('-r', '--refresh', action='store_true')
@@ -90,7 +90,8 @@ for original_image in tqdm(original_images):
         images.append(transformed_image)
 
 os.makedirs("tile_databases_v2", exist_ok=True)
-if hasher.__name__ + ".npy" not in os.listdir("tile_databases") or args.refresh:
+print(os.listdir("tile_databases_v2"))
+if hasher.__name__ + "_hashes.pkl" not in os.listdir("tile_databases_v2") or args.refresh:
     # initialize_session()
     print("Creating database for", hasher.__name__)
     original_hashes = []
@@ -116,30 +117,46 @@ if hasher.__name__ + ".npy" not in os.listdir("tile_databases") or args.refresh:
     
     indexes = np.arange(len(original_images))
     indexes = np.repeat(indexes, N_TRANSFORMS * len(N_BREAKSS))
-    print(indexes)
 
     metadata = {"anchors": anchor_points_list.tolist(), "n_ranges": n_ranges, "indices": indexes.tolist()}
     database = TileDatabaseV2(original_hashes, storedir=f"tile_databases_v2/{hasher.__name__}", metadata=metadata, n_breaks=N_BREAKSS)
 else:
     database = TileDatabaseV2(None, storedir=f"tile_databases_v2/{hasher.__name__}", n_breaks=N_BREAKSS)
 
-print("Computing top 5 accuracy...")
+print(f"Computing top {N_IMAGE_RETRIEVAL} accuracy...")
 
-transformed_images = [t.transform(image, transformation) for image in original_images]
+transformed_images = [t.transform(image, transformation) for image in tqdm(original_images)]
 anchor_points_list = chunk_call(model, torch.stack([transform(image) for image in transformed_images]), 256)
 anchor_points_list = reparametricize(anchor_points_list, MIN_MARGIN).numpy()
 
 ### Evaluation for true hamming distance
 matches = []
+inv_matches = []
 for index, (transformed_image, anchor_points) in enumerate(zip(tqdm(transformed_images), anchor_points_list)):
     match = database.similarity_score(transformed_image, hasher, anchor_points, index, flexible=True)["matches"]
+    inv_match = database.similarity_score(transformed_image, hasher, anchor_points, len(transformed_images)-1-index, flexible=True)["matches"]
+
     matches.append(max(point["score"] for point in match))
+    inv_matches.append(max(point["score"] for point in inv_match))
 
 matches = np.array(matches)
+inv_matches = np.array(inv_matches)
+while True:
+    tau = input("Enter tau: ")
+    print("fnr:", np.mean(matches < float(tau)))
+    print("fpr:", np.mean(inv_matches > float(tau)))
+
 print(N_BREAKSS)
 print(matches.mean(), matches.std())
 
-# chunks_of = 100
+# results = []
+# for transformed_image, anchor_points in zip(tqdm(transformed_images), anchor_points_list):
+#     result = database.query(transformed_image, hasher, anchor_points, K_RETRIEVAL=N_IMAGE_RETRIEVAL)
+#     results.append(result)
+
+## Multiprocessing
+
+# chunks_of = 20
 # transformed_images_chunks = [transformed_images[i:i+chunks_of] for i in range(0, len(images), chunks_of)]
 # anchor_points_chunks = [anchor_points_list[i:i+chunks_of] for i in range(0, len(anchor_points_list), chunks_of)]
 
@@ -153,7 +170,7 @@ print(matches.mean(), matches.std())
 # results = [point for points in queries for point in points]
 
 
-### Evaluation with failures
+## Evaluation with failures
 # n_matches = 0
 # for index, result in enumerate(results):
 #     match = index in [point["index"] for point in result["matches"]]
@@ -165,5 +182,5 @@ print(matches.mean(), matches.std())
 ### Evaluation without failures
 # n_matches = sum([int(index in [point["index"] for point in result["matches"]]) for index, result in enumerate(results)])
 
-# print(f'{hasher.__name__} with {transformation} transformation:', n_matches / len(image_files))
+print(f'{hasher.__name__} with {transformation} transformation:', n_matches / len(image_files))
 print("#############################################")
