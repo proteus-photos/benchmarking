@@ -7,12 +7,13 @@ import gc
 import argparse
 from sklearn.decomposition import PCA
 import joblib
+from scipy.stats import norm, binom
+import pandas as pd
 
 from transformer import Transformer
-from hashes.blockhash import blockhash
-# from hashes.neuralhash import neuralhash
 from utils import match
 from database import Database
+from matplotlib import pyplot as plt
 
 from hashes.dhash import dhash
 from hashes.ahash import ahash
@@ -23,13 +24,29 @@ from hashes.dinohash import dinohash
 from torch.utils.data import Dataset, DataLoader
 from torchvision.transforms import ToTensor
 
-transformation = 'jpeg' #, 'double screenshot', 'jpeg', 'crop']
+
+def generate_roc(matches, bits):
+    matches = matches * bits
+    taus = np.arange(bits+1)
+    tpr = [(matches>=tau).mean() for tau in taus]
+
+    fpr = 1 - binom.cdf(taus-1, bits, 0.5)
+    
+    df = pd.DataFrame({
+        "tpr": tpr,
+        "fpr": fpr,
+        "tau": taus
+    })
+    
+    df.to_csv(f"./results/{hasher.__name__}_{transformation}.csv")
+
+transformation = 'blur'
 hasher = dinohash # dhash, phash, blockhash, whash
 
 dataset_folder = './diffusion_data'
-image_files = [f for f in os.listdir(dataset_folder)][:10_000]
+image_files = [f for f in os.listdir(dataset_folder)][:100_000]
 
-BATCH_SIZE = 256
+BATCH_SIZE = 512
 N_IMAGE_RETRIEVAL = 1
 
 parser = argparse.ArgumentParser(description ='Perform retrieval benchmarking.')
@@ -50,13 +67,13 @@ if hasher.__name__ + ".npy" not in os.listdir("databases") or args.refresh:
         original_hashes.extend(hasher(images, defense=False))
         gc.collect()
 
-    # pca = PCA(n_components=512)
+    # pca = PCA(n_components=96)
     
-    # Fit PCA model and transform the data
     # transformed_features = pca.fit_transform(original_hashes)
     
     # weights = pca.components_
     # np.save(f"./hashes/dinoPCA", weights)
+    # exit()
 
     db = Database(original_hashes, storedir=f"databases/{hasher.__name__}")
 else:
@@ -88,31 +105,25 @@ else:
 
 #     gc.collect()
 
-print(f"Computing top {N_IMAGE_RETRIEVAL} accuracy...")
+print(f"Computing bit accuracy for {transformation}...")
 modified_hashes = []
 
 image_file_batches = (image_files[i:i+BATCH_SIZE] for i in range(0, len(image_files), BATCH_SIZE))
 
 for image_file_batch in tqdm(image_file_batches, total=len(image_files)//BATCH_SIZE):
     images = [Image.open(os.path.join(dataset_folder, image_file)).convert("RGB") for image_file in image_file_batch]
-    transformed_images = [t.transform(image, transformation) for image in images]
+    transformed_images = [t.transform(t.transform(image, "screenshot"), transformation) for image in images]
     modified_hashes_batch = hasher(transformed_images, defense=False).tolist()
     modified_hashes.extend(modified_hashes_batch)
 
 modified_hashes = np.array(modified_hashes)
+bits = modified_hashes.shape[-1]
 
 matches = db.similarity_score(modified_hashes)
 inv_matches = db.similarity_score(modified_hashes[::-1])
 
 print(matches.mean(), matches.std())
 print(inv_matches.mean(), inv_matches.std())
-np.save(f"matches_{hasher.__name__}_{transformation}.npy", matches)
-np.save(f"inv_matches_{hasher.__name__}_{transformation}.npy", inv_matches)
 
-while True:
-    tau = input("Enter tau: ")
-    print("fnr:", np.mean(matches < float(tau)))
-    print("fpr:", np.mean(inv_matches > float(tau)))
+# generate_roc(matches, bits=bits)
 
-
-print(f'{hasher.__name__} with {transformation} transformation:', n_matches / len(image_files))

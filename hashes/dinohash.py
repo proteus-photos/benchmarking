@@ -181,21 +181,11 @@ preprocess = transforms.Compose([
 bart = BaRTDefense(min_transforms=2, max_transforms=6)
 
 def dinohash(ims, bits=512, n_average=5, defense=False, *args, **kwargs):
+    image_arrays = torch.stack([preprocess(im) for im in ims]).cuda()
+    
+    with torch.no_grad():
+        outs = dinov2_vitb14_reg(image_arrays).cpu().numpy()
+        outs = outs@components.T
+        outs = outs >= 0
 
-    hash_output = []
-    for _ in range(n_average):
-        if defense:
-            transformed_images = [bart.apply_defense(im) for im in ims]
-        else:
-            transformed_images = ims
-        image_arrays = torch.stack([preprocess(im) for im in transformed_images]).cuda()
-        
-        with torch.no_grad():
-            outs = dinov2_vitb14_reg(image_arrays).cpu().numpy()
-            # outs = outs@components.T
-            # outs = outs[:bits] >= 0
-
-            hash_output.append(outs)
-
-    hash_output = np.stack(hash_output).mean(axis=0) #>= 0.5
-    return hash_output
+    return outs
