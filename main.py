@@ -40,20 +40,20 @@ def generate_roc(matches, bits):
     
     df.to_csv(f"./results/{hasher.__name__}_{transformation}.csv")
 
-transformation = 'blur'
 hasher = dinohash # dhash, phash, blockhash, whash
 
 dataset_folder = './diffusion_data'
-image_files = [f for f in os.listdir(dataset_folder)][:100_000]
+image_files = [f for f in os.listdir(dataset_folder)][:1_000_000]
 
 BATCH_SIZE = 512
 N_IMAGE_RETRIEVAL = 1
 
 parser = argparse.ArgumentParser(description ='Perform retrieval benchmarking.')
 parser.add_argument('-r', '--refresh', action='store_true')
-
+parser.add_argument('--transform')
 args = parser.parse_args()
 
+transformation = args.transform
 t = Transformer()
 
 os.makedirs("databases", exist_ok=True)
@@ -105,7 +105,7 @@ else:
 
 #     gc.collect()
 
-print(f"Computing bit accuracy for {transformation}...")
+print(f"Computing bit accuracy for {transformation} + {hasher.__name__}...")
 modified_hashes = []
 
 image_file_batches = (image_files[i:i+BATCH_SIZE] for i in range(0, len(image_files), BATCH_SIZE))
@@ -125,5 +125,5 @@ inv_matches = db.similarity_score(modified_hashes[::-1])
 print(matches.mean(), matches.std())
 print(inv_matches.mean(), inv_matches.std())
 
-# generate_roc(matches, bits=bits)
+generate_roc(matches, bits=bits)
 

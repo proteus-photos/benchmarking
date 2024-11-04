@@ -1,6 +1,6 @@
 from PIL import Image, ImageEnhance, ImageFilter
 import io
-from random import random
+import random
 
 class Transformer:
     def __init__(self):
