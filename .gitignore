@@ -1,7 +1,7 @@
 **/__pycache__
 **/imagenet
 *.sh
-/weights/
+/old/weights/
 /datasets/
 /yolov8n-seg.pt
 /imagenet.zip

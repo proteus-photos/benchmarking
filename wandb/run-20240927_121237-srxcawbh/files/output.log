@@ -1,6 +1,0 @@
-cuda
-Step [1/7], Train Loss: 1.695687
-Traceback (most recent call last):
-  File "/home/singh/benchmarking/train_anchor.py", line 376, in <module>
-    if torch.isnan(val_loss):
-TypeError: isnan(): argument 'input' (position 1) must be Tensor, not float
