@@ -5,14 +5,11 @@ from tqdm.auto import tqdm
 from typing import Union
 
 
-def load_hash_matrix(path='models/coreml_model/neuralhash_128x96_seed1.dat'):
+def load_hash_matrix(path='./dinoPCA.npy'):
     """
     Loads the output hash matrix multiplied with the network logits.
     """
-    seed1 = open(path, 'rb').read()[128:]
-    seed1 = np.frombuffer(seed1, dtype=np.float32)
-    seed1 = seed1.reshape([96, 128])
-    return seed1
+    return np.load(path).astype(np.float32)
 
 
 def compute_hash(logits, seed=None, binary=False, as_string=False):

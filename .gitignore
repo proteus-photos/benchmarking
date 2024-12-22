@@ -3,9 +3,11 @@
 *.sh
 /old/weights/
 /datasets/
-/yolov8n-seg.pt
 /imagenet.zip
 /plots/
 /logs/
 /images/
 /diffusion_data/
+/adversarial_preprocessing/evasion_attack_outputs
+/adversarial_preprocessing/temp
+/adversarial_preprocessing/logs
