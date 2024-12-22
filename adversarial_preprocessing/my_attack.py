@@ -23,79 +23,60 @@ from itertools import repeat
 import copy
 import time
 from dinohash import DinoExtractor, preprocess, dinohash, normalize
+import torch
+import torch.nn.functional as F
 
 load_and_preprocess_img = lambda img: preprocess(Image.open(img).convert('RGB')).cuda().unsqueeze(0)
-import torch
-import torch.nn as nn
-import torch.optim as optim
 
-def cw_attack_batch(model, images, confidence=0, c=1e-4, kappa=0, max_iter=1000, learning_rate=0.01):
+
+def pgd_attack(model, inputs, labels, epsilon, alpha, num_iter, targeted=False):
     """
-    Batched implementation of the C&W L2 attack.
-    
+    Perform a Projected Gradient Descent (PGD) attack.
+
     Args:
-        model: The target model to attack
-        images: Batch of input images tensor (N, C, H, W)
-        confidence: Confidence parameter (higher -> stronger attack)
-        c: Initial c value for the attack
-        kappa: Kappa parameter from the paper
-        max_iter: Maximum number of optimization iterations
-        learning_rate: Learning rate for optimization
-    
+        model: PyTorch model to attack.
+        inputs: Original inputs (batch of images).
+        labels: True labels for untargeted attack, or target labels for targeted attack.
+        epsilon: Maximum perturbation (L∞ norm bound).
+        alpha: Step size for each iteration.
+        num_iter: Number of iterations.
+        targeted: Whether the attack is targeted or untargeted.
+
     Returns:
-        perturbed_images: Batch of adversarial examples
-        success_mask: Boolean mask indicating which attacks succeeded
+        Adversarial examples.
     """
-    model.eval()
-    batch_size = images.shape[0]
+    # Clone inputs and enable gradients
+    adv_inputs = inputs.clone().detach().requires_grad_(True)
     
-    w = torch.zeros_like(images, requires_grad=True)
-    optimizer = optim.Adam([w], lr=learning_rate)
-    
-    for step in range(max_iter):
-        if not active_mask.any():
-            break
+    for _ in range(num_iter):
+        # Forward pass
+        outputs = model(adv_inputs)
+        
+        # Compute the loss
+        if targeted:
+            loss = -F.cross_entropy(outputs, labels)  # Minimize target class score
+        else:
+            loss = F.cross_entropy(outputs, labels)   # Maximize true class score
+        
+        # Backward pass
+        loss.backward()
+        
+        # Compute the perturbation (gradient ascent/descent step)
+        with torch.no_grad():
+            perturbation = alpha * adv_inputs.grad.sign()
+            adv_inputs = adv_inputs + perturbation  # Gradient step
             
-        perturbed = torch.tanh(w) * 0.5 + 0.5
+            # Project perturbations to L∞ norm ball
+            adv_inputs = torch.min(torch.max(adv_inputs, inputs - epsilon), inputs + epsilon)
+            
+            # Clip to valid range [0, 1]
+            adv_inputs = torch.clamp(adv_inputs, 0, 1)
         
-        l2_dists = torch.norm((perturbed - images).view(batch_size, -1), p=2, dim=1)
-        
-        outputs = model(normalize(perturbed))
-        
-        # Calculate CW loss only for active images
-        losses = torch.clamp(max_other_scores - target_scores + confidence, min=0)
-        total_loss = (l2_dists + c * losses)[active_mask].mean()
-        
-        # Update weights
-        optimizer.zero_grad()
-        total_loss.backward()
-        optimizer.step()
-        
-        # Check which attacks succeeded
-        _, predicted = torch.max(outputs.data, 1)
-        current_success = (predicted == targets)
-        
-        # Update best adversarial examples
-        improved = (current_success & (l2_dists < best_l2s))
-        best_advs[improved] = perturbed[improved].clone()
-        best_l2s[improved] = l2_dists[improved].clone()
-        
-        # Update success mask
-        success_mask = success_mask | current_success
-        
-        # Update active mask - only keep trying for unsuccessful attacks
-        active_mask = ~success_mask
-        
-        # Optional: Print progress
-        if step % 100 == 0:
-            print(f"Step {step}: {success_mask.sum().item()}/{batch_size} images successfully attacked")
-    
-    # Return best adversarial examples found for each image
-    final_advs = torch.where(success_mask.unsqueeze(1).unsqueeze(2).unsqueeze(3),
-                            best_advs,
-                            perturbed)
-    
-    return final_advs, success_mask
+        # Reset gradients for the next iteration
+        adv_inputs.grad.zero_()
+
+    return adv_inputs.detach()
+
 
 def test_attack_batch(model, images, target_classes):
     """
