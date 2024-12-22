@@ -174,22 +174,29 @@ def DinoExtractor():
 # Load model
 dinov2_vitb14_reg = DinoExtractor()
 components = np.load(f"./dinoPCA.npy")
-    
+components_torch = torch.from_numpy(components).cuda()
+
+normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
 preprocess = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    normalize
 ])
 
 bart = BaRTDefense(min_transforms=2, max_transforms=6)
 
-def dinohash(ims, bits=512, n_average=5, defense=False, *args, **kwargs):
+def dinohash(ims, differentiable=False):
     image_arrays = torch.stack([preprocess(im) for im in ims]).cuda()
-    
-    with torch.no_grad():
-        outs = dinov2_vitb14_reg(image_arrays).cpu().numpy()
-        outs = outs@components.T
-        outs = outs >= 0
+    if not differentiable:
+        with torch.no_grad():
+            outs = dinov2_vitb14_reg(image_arrays).cpu().numpy()
+            outs = outs@components.T
+            outs = outs >= 0
+    else:
+        outs = dinov2_vitb14_reg(image_arrays)
+        outs = outs@components_torch.T
+        outs = torch.sigmoid(outs)
 
     return outs
 

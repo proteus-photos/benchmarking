@@ -13,8 +13,6 @@ from skimage.color import rgb2gray
 from tqdm import tqdm
 
 from models.neuralhash import NeuralHash
-from losses.mse_loss import mse_loss
-from losses.quality_losses import ssim_loss
 from utils.hashing import compute_hash, load_hash_matrix
 from utils.image_processing import save_images
 from utils.logger import Logger
@@ -24,107 +22,115 @@ import concurrent.futures
 from itertools import repeat
 import copy
 import time
-from dinohash import DinoExtractor, preprocess
+from dinohash import DinoExtractor, preprocess, dinohash, normalize
 
 load_and_preprocess_img = lambda img: preprocess(Image.open(img).convert('RGB')).cuda().unsqueeze(0)
+import torch
+import torch.nn as nn
+import torch.optim as optim
 
-def optimization_thread(url_list, device, seed, loss_fkt, logger, args, pbar):
-    try:
-        # Store and reload source image to avoid image changes due to different formats
-        id = randint(1, 10000000)
-        temp_img = f'curr_image_{id}'
-        model = DinoExtractor()
-        while(url_list != []):
-            img = url_list.pop(0)
-            print('Thread working on ' + img, len(url_list))
-            source = load_and_preprocess_img(img)
+def cw_attack_batch(model, images, confidence=0, c=1e-4, kappa=0, max_iter=1000, learning_rate=0.01):
+    """
+    Batched implementation of the C&W L2 attack.
+    
+    Args:
+        model: The target model to attack
+        images: Batch of input images tensor (N, C, H, W)
+        confidence: Confidence parameter (higher -> stronger attack)
+        c: Initial c value for the attack
+        kappa: Kappa parameter from the paper
+        max_iter: Maximum number of optimization iterations
+        learning_rate: Learning rate for optimization
+    
+    Returns:
+        perturbed_images: Batch of adversarial examples
+        success_mask: Boolean mask indicating which attacks succeeded
+    """
+    model.eval()
+    batch_size = images.shape[0]
+    
+    w = torch.zeros_like(images, requires_grad=True)
+    optimizer = optim.Adam([w], lr=learning_rate)
+    
+    for step in range(max_iter):
+        if not active_mask.any():
+            break
+            
+        perturbed = torch.tanh(w) * 0.5 + 0.5
+        
+        l2_dists = torch.norm((perturbed - images).view(batch_size, -1), p=2, dim=1)
+        
+        outputs = model(normalize(perturbed))
+        
+        # Calculate CW loss only for active images
+        losses = torch.clamp(max_other_scores - target_scores + confidence, min=0)
+        total_loss = (l2_dists + c * losses)[active_mask].mean()
+        
+        # Update weights
+        optimizer.zero_grad()
+        total_loss.backward()
+        optimizer.step()
+        
+        # Check which attacks succeeded
+        _, predicted = torch.max(outputs.data, 1)
+        current_success = (predicted == targets)
+        
+        # Update best adversarial examples
+        improved = (current_success & (l2_dists < best_l2s))
+        best_advs[improved] = perturbed[improved].clone()
+        best_l2s[improved] = l2_dists[improved].clone()
+        
+        # Update success mask
+        success_mask = success_mask | current_success
+        
+        # Update active mask - only keep trying for unsuccessful attacks
+        active_mask = ~success_mask
+        
+        # Optional: Print progress
+        if step % 100 == 0:
+            print(f"Step {step}: {success_mask.sum().item()}/{batch_size} images successfully attacked")
+    
+    # Return best adversarial examples found for each image
+    final_advs = torch.where(success_mask.unsqueeze(1).unsqueeze(2).unsqueeze(3),
+                            best_advs,
+                            perturbed)
+    
+    return final_advs, success_mask
 
-            input_file_name = img.rsplit(sep='/', maxsplit=1)[1].split('.')[0]
-            if args.output_folder != '':
-                save_images(source, args.output_folder, f'{input_file_name}')
-            orig_image = source.clone()
-            # Compute original hash
-            with torch.no_grad():
-                outputs_unmodified = model(source)
-                unmodified_hash_bin = compute_hash(
-                    outputs_unmodified, seed, binary=True)
+def test_attack_batch(model, images, target_classes):
+    """
+    Test the batched C&W attack
+    """
+    # Convert inputs to tensors if needed
+    if not isinstance(images, torch.Tensor):
+        images = torch.FloatTensor(images)
+    if not isinstance(target_classes, torch.Tensor):
+        target_classes = torch.LongTensor(target_classes)
+        
+    # Run attack
+    perturbed_images, success_mask = cw_attack_batch(model, images, target_classes)
+    
+    # Print results
+    success_rate = success_mask.float().mean().item()
+    print(f"Attack success rate: {success_rate:.2%}")
+    
+    # Calculate L2 distances for successful attacks
+    l2_dists = torch.norm((perturbed_images - images).view(len(images), -1), p=2, dim=1)
+    successful_l2 = l2_dists[success_mask]
+    
+    if len(successful_l2) > 0:
+        print(f"Mean L2 distance for successful attacks: {successful_l2.mean():.4f}")
+        
+    return perturbed_images, success_mask
 
-                unmodified_hash_hex = compute_hash(
-                    outputs_unmodified, seed, binary=False)
-            # Compute edge mask
-            if args.edges_only:
-                transform = T.Compose(
-                    [T.ToPILImage(), T.Grayscale(), T.ToTensor()])
-                image_gray = transform(source.squeeze()).squeeze()
-                image_gray = image_gray.cpu().numpy()
-                edges = feature.canny(image_gray, sigma=3).astype(int)
-                edge_mask = torch.from_numpy(edges).to(device)
+# Example usage:
+"""
+model = YourModel()
+images = your_batch_of_images  # Shape: (N, C, H, W)
+target_classes = desired_targets  # Shape: (N,)
 
-            # Set up optimizer
-            source.requires_grad = True
-            if args.optimizer == 'Adam':
-                optimizer = torch.optim.Adam(
-                    params=[source], lr=args.learning_rate)
-            elif args.optimizer == 'SGD':
-                optimizer = torch.optim.SGD(params=[source], lr=args.learning_rate)
-            else:
-                raise RuntimeError(
-                    f'{args.optimizer} is no valid optimizer class. Please select --optimizer out of [Adam, SGD]')
-            # Optimization cycle
-            print(f'\nStart optimizing on {img}')
-            for i in range(10000):
-                with torch.no_grad():
-                    source.data = torch.clamp(source, min=-1, max=1)
-                if args.optimize_original:
-                    outputs_source = model(resize(source))
-                else:
-                    outputs_source = model(source)
-                target_loss = - \
-                    loss_fkt(outputs_source, unmodified_hash_bin, seed)
-                visual_loss = -ssim_loss(orig_image, source)
-                optimizer.zero_grad()
-                total_loss = target_loss + 0.99**i * args.ssim_weight * visual_loss
-                total_loss.backward()
-                if args.edges_only:
-                    optimizer.param_groups[0]['params'][0].grad *= edge_mask
-                optimizer.step()
-
-                # Check for hash changes
-                if i % args.check_interval == 0:
-                    with torch.no_grad():
-                        save_images(source, './temp', temp_img)
-                        current_img = load_and_preprocess_img(f'./temp/{temp_img}.png')
-                        check_output = model(current_img)
-                        source_hash_hex = compute_hash(check_output, seed)
-                        source_hash_bin = compute_hash(
-                            check_output, seed, binary=True)
-
-                        hamming = hamming_distance(source_hash_bin.unsqueeze(0), unmodified_hash_bin.unsqueeze(0)).item()
-                        if hamming >= args.hamming:
-                            optimized_file = f'{args.output_folder}/{input_file_name}_opt'
-                            if args.output_folder != '':
-                                save_images(source, args.output_folder,
-                                            f'{input_file_name}_opt')
-                            # Compute metrics in the [0, 1] space
-                            l2_distance = torch.norm(
-                                ((current_img + 1) / 2) - ((orig_image + 1) / 2), p=2)
-                            linf_distance = torch.norm(
-                                ((current_img + 1) / 2) - ((orig_image + 1) / 2), p=float("inf"))
-                            ssim_distance = ssim_loss(
-                                (current_img + 1) / 2, (orig_image + 1) / 2)
-                            print(
-                                f'Finishing after {i+1} steps - L2: {l2_distance:.4f} - L-Inf: {linf_distance:.4f} - SSIM: {ssim_distance:.4f} - Hamm: {hamming}')
-
-                            logger_data = [img, optimized_file + '.png', l2_distance.item(),
-                                            linf_distance.item(), ssim_distance.item(), i+1, target_loss.item()]
-                            logger.add_line(logger_data)
-                            break
-            pbar.update(1)
-        os.remove(f'./temp/{temp_img}.png')
-
-    except Exception as e:
-        print(f"Caught error: {e}")
-        print(f"Traceback: {''.join(traceback.format_exc())}")
+adversarial_examples, success_mask = test_attack_batch(model, images, target_classes)
+"""
 
 def main():
     # Parse command-line arguments
