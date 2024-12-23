@@ -181,22 +181,25 @@ normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 
 preprocess = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
-    normalize
 ])
 
 bart = BaRTDefense(min_transforms=2, max_transforms=6)
 
-def dinohash(ims, differentiable=False):
-    image_arrays = torch.stack([preprocess(im) for im in ims]).cuda()
+def dinohash(ims, differentiable=False, c=5):
+    # NOTE: non-differentiable assumes PIL input and differentiable assumes torch.Tensor input
+
     if not differentiable:
+        image_arrays = torch.stack([normalize(preprocess(im)) for im in ims]).cuda()
         with torch.no_grad():
             outs = dinov2_vitb14_reg(image_arrays).cpu().numpy()
             outs = outs@components.T
             outs = outs >= 0
     else:
+        image_arrays = normalize(ims)
         outs = dinov2_vitb14_reg(image_arrays)
+        outs /= torch.max(torch.norm(outs, dim=1, keepdim=True), 1e-12)
         outs = outs@components_torch.T
-        outs = torch.sigmoid(outs)
+        outs = torch.sigmoid(outs * c)
 
     return outs
 

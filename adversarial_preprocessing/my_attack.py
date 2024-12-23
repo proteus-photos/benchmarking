@@ -26,10 +26,8 @@ from dinohash import DinoExtractor, preprocess, dinohash, normalize
 import torch
 import torch.nn.functional as F
 
-load_and_preprocess_img = lambda img: preprocess(Image.open(img).convert('RGB')).cuda().unsqueeze(0)
 
-
-def pgd_attack(model, inputs, labels, epsilon, alpha, num_iter, targeted=False):
+def pgd_attack(model, images, alpha, num_iter=50, epsilon=1/8):
     """
     Perform a Projected Gradient Descent (PGD) attack.
 
@@ -40,78 +38,39 @@ def pgd_attack(model, inputs, labels, epsilon, alpha, num_iter, targeted=False):
         epsilon: Maximum perturbation (L∞ norm bound).
         alpha: Step size for each iteration.
         num_iter: Number of iterations.
-        targeted: Whether the attack is targeted or untargeted.
 
     Returns:
         Adversarial examples.
     """
-    # Clone inputs and enable gradients
+
+    inputs = torch.stack([preprocess(Image.open(img).convert('RGB')).cuda() for img in images])
+    original_hash = dinohash(inputs, differentiable=True) > 0.5
     adv_inputs = inputs.clone().detach().requires_grad_(True)
     
     for _ in range(num_iter):
         # Forward pass
-        outputs = model(adv_inputs)
-        
-        # Compute the loss
-        if targeted:
-            loss = -F.cross_entropy(outputs, labels)  # Minimize target class score
-        else:
-            loss = F.cross_entropy(outputs, labels)   # Maximize true class score
-        
-        # Backward pass
+        outputs = dinohash(adv_inputs, differentiable=True, c=5)
+
+        loss = -torch.nn.functional.mse_loss(outputs, original_hash) / original_hash.shape[1]
         loss.backward()
         
-        # Compute the perturbation (gradient ascent/descent step)
         with torch.no_grad():
-            perturbation = alpha * adv_inputs.grad.sign()
-            adv_inputs = adv_inputs + perturbation  # Gradient step
+            adv_inputs = adv_inputs + alpha * adv_inputs.grad.sign()
             
-            # Project perturbations to L∞ norm ball
+            # project perturbations to L∞ norm ball
             adv_inputs = torch.min(torch.max(adv_inputs, inputs - epsilon), inputs + epsilon)
-            
-            # Clip to valid range [0, 1]
             adv_inputs = torch.clamp(adv_inputs, 0, 1)
         
-        # Reset gradients for the next iteration
         adv_inputs.grad.zero_()
+
+    adv_PIL_images = [T.ToPILImage()(img) for img in adv_inputs]
+    clean_PIL_images = [T.ToPILImage()(img) for img in inputs]
+    
+    for img, adv_img in zip(PIL_images):
+        img.save(f'./temp/{i}.png')
 
     return adv_inputs.detach()
 
-
-def test_attack_batch(model, images, target_classes):
-    """
-    Test the batched C&W attack
-    """
-    # Convert inputs to tensors if needed
-    if not isinstance(images, torch.Tensor):
-        images = torch.FloatTensor(images)
-    if not isinstance(target_classes, torch.Tensor):
-        target_classes = torch.LongTensor(target_classes)
-        
-    # Run attack
-    perturbed_images, success_mask = cw_attack_batch(model, images, target_classes)
-    
-    # Print results
-    success_rate = success_mask.float().mean().item()
-    print(f"Attack success rate: {success_rate:.2%}")
-    
-    # Calculate L2 distances for successful attacks
-    l2_dists = torch.norm((perturbed_images - images).view(len(images), -1), p=2, dim=1)
-    successful_l2 = l2_dists[success_mask]
-    
-    if len(successful_l2) > 0:
-        print(f"Mean L2 distance for successful attacks: {successful_l2.mean():.4f}")
-        
-    return perturbed_images, success_mask
-
-# Example usage:
-"""
-model = YourModel()
-images = your_batch_of_images  # Shape: (N, C, H, W)
-target_classes = desired_targets  # Shape: (N,)
-
-adversarial_examples, success_mask = test_attack_batch(model, images, target_classes)
-"""
 
 def main():
     # Parse command-line arguments
@@ -121,10 +80,6 @@ def main():
                         default='inputs/source.png', help='image to manipulate')
     parser.add_argument('--learning_rate', dest='learning_rate', default=1e-3,
                         type=float, help='step size of PGD optimization step')
-    parser.add_argument('--optimizer', dest='optimizer', default='Adam',
-                        type=str, help='kind of optimizer')
-    parser.add_argument('--ssim_weight', dest='ssim_weight', default=5,
-                        type=float, help='weight of ssim loss')
     parser.add_argument('--experiment_name', dest='experiment_name',
                         default='change_hash_attack', type=str, help='name of the experiment and logging file')
     parser.add_argument('--output_folder', dest='output_folder',
@@ -135,10 +90,6 @@ def main():
                         action='store_true', help='Optimize resized image')
     parser.add_argument('--hamming', dest='hamming',
                         default=0.4, type=float, help='Minimum Hamming distance to stop')
-    parser.add_argument('--threads', dest='num_threads',
-                        default=4, type=int, help='Number of parallel threads')
-    parser.add_argument('--check_interval', dest='check_interval',
-                        default=1, type=int, help='Hash change interval checking')
     args = parser.parse_args()
 
     # Create temp folder
@@ -186,12 +137,6 @@ def main():
     def thread_function(x): return optimization_thread( images, device, seed, loss_function, logger, args, pbar)
     
     pbar = tqdm(total=len(images), desc="Processing")
-
-    threads_args = [(images, device, seed, loss_function,
-                     logger, args, pbar) for i in range(args.num_threads)]
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=128) as executor:
-        executor.map(thread_function, threads_args)
 
     logger.finish_logging()
     end = time.time()

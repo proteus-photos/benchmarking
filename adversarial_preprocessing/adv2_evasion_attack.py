@@ -26,7 +26,7 @@ import copy
 import time
 from dinohash import DinoExtractor, preprocess
 
-load_and_preprocess_img = lambda img: preprocess(Image.open(img).convert('RGB')).cuda().unsqueeze(0)
+load_and_preprocess_img = lambda img: normalize(preprocess(Image.open(img).convert('RGB')).cuda().unsqueeze(0))
 
 def optimization_thread(url_list, device, seed, loss_fkt, logger, args, pbar):
     try:
