@@ -27,7 +27,7 @@ import torch
 import torch.nn.functional as F
 
 
-def pgd_attack(model, images, alpha, num_iter=50, epsilon=1/8):
+def pgd_attack(images, alpha=1/255, num_iter=50, epsilon=8/255):
     """
     Perform a Projected Gradient Descent (PGD) attack.
 
@@ -44,104 +44,55 @@ def pgd_attack(model, images, alpha, num_iter=50, epsilon=1/8):
     """
 
     inputs = torch.stack([preprocess(Image.open(img).convert('RGB')).cuda() for img in images])
-    original_hash = dinohash(inputs, differentiable=True) > 0.5
+    original_hash = (dinohash(inputs, differentiable=True) > 0.5).float()
     adv_inputs = inputs.clone().detach().requires_grad_(True)
     
     for _ in range(num_iter):
         # Forward pass
-        outputs = dinohash(adv_inputs, differentiable=True, c=5)
+        outputs = dinohash(adv_inputs, differentiable=True, c=10)
 
-        loss = -torch.nn.functional.mse_loss(outputs, original_hash) / original_hash.shape[1]
+        loss = torch.nn.functional.mse_loss(outputs, original_hash, reduction="mean")
+        print(loss.item())
         loss.backward()
-        
+
         with torch.no_grad():
-            adv_inputs = adv_inputs + alpha * adv_inputs.grad.sign()
+            adv_inputs += alpha * adv_inputs.grad.sign()
             
             # project perturbations to L∞ norm ball
-            adv_inputs = torch.min(torch.max(adv_inputs, inputs - epsilon), inputs + epsilon)
-            adv_inputs = torch.clamp(adv_inputs, 0, 1)
+            adv_inputs.copy_(adv_inputs.clamp(inputs - epsilon, inputs + epsilon))
+            adv_inputs.copy_(adv_inputs.clamp(0, 1))
         
         adv_inputs.grad.zero_()
+    flipped_bits = ((outputs > 0.5).float() - original_hash).abs()
 
-    adv_PIL_images = [T.ToPILImage()(img) for img in adv_inputs]
     clean_PIL_images = [T.ToPILImage()(img) for img in inputs]
-    
-    for img, adv_img in zip(PIL_images):
-        img.save(f'./temp/{i}.png')
+    adv_PIL_images = [T.ToPILImage()(img) for img in adv_inputs]
 
-    return adv_inputs.detach()
+    for clean_img, adv_img, name in zip(clean_PIL_images, adv_PIL_images, images):
+        name = name.split('/')[-1]
+        clean_img.save(f'./dataset/clean_{name}')
+        adv_img.save(f'./dataset/adv_{name}')
 
+# Parse command-line arguments
+parser = argparse.ArgumentParser(
+    description='Perform neural collision attack.')
+parser.add_argument('--batch_size', dest='batch_size', type=int, default=64,
+                    help='batch size for processing images')
+parser.add_argument('--image_dir', dest='image_dir', type=str,
+                    default='./dataset', help='directory containing images')
+parser.add_argument('--alpha', dest='alpha', type=float, default=1/255,
+                    help='step size for each iteration')
+parser.add_argument('--num_iter', dest='num_iter', type=int, default=50,
+                    help='number of iterations')
+parser.add_argument('--epsilon', dest='epsilon', type=float, default=8/255,
+                    help='maximum perturbation (L∞ norm bound)')
 
-def main():
-    # Parse command-line arguments
-    parser = argparse.ArgumentParser(
-        description='Perform neural collision attack.')
-    parser.add_argument('--source', dest='source', type=str,
-                        default='inputs/source.png', help='image to manipulate')
-    parser.add_argument('--learning_rate', dest='learning_rate', default=1e-3,
-                        type=float, help='step size of PGD optimization step')
-    parser.add_argument('--experiment_name', dest='experiment_name',
-                        default='change_hash_attack', type=str, help='name of the experiment and logging file')
-    parser.add_argument('--output_folder', dest='output_folder',
-                        default='evasion_attack_outputs', type=str, help='folder to save optimized images in')
-    parser.add_argument('--edges_only', dest='edges_only',
-                        action='store_true', help='Change only pixels of edges')
-    parser.add_argument('--optimize_original', dest='optimize_original',
-                        action='store_true', help='Optimize resized image')
-    parser.add_argument('--hamming', dest='hamming',
-                        default=0.4, type=float, help='Minimum Hamming distance to stop')
-    args = parser.parse_args()
+args = parser.parse_args()
 
-    # Create temp folder
-    os.makedirs('./temp', exist_ok=True)
+image_files = [join(args.image_dir, f) for f in os.listdir(args.image_dir) if isfile(join(args.image_dir, f))]
 
-    # Load and prepare components
-    start = time.time()
-    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-    seed = load_hash_matrix()
-    seed = torch.tensor(seed).to(device)
+batches = [image_files[i:i+args.batch_size] for i in range(0, len(image_files), args.batch_size)]
 
-    # Prepare output folder
-    if args.output_folder != '':
-        try:
-            os.mkdir(args.output_folder)
-        except:
-            if not os.listdir(args.output_folder):
-                print(
-                    f'Folder {args.output_folder} already exists and is empty.')
-            else:
-                print(
-                    f'Folder {args.output_folder} already exists and is not empty.')
-
-    # Prepare logging
-    logging_header = ['file', 'optimized_file', 'l2',
-                      'l_inf', 'ssim', 'steps', 'target_loss', 'Hamming']
-    logger = Logger(args.experiment_name, logging_header, output_dir='./logs')
-    logger.add_line(['Hyperparameter', args.source, args.learning_rate,
-                     args.optimizer, args.ssim_weight, args.edges_only, args.hamming])
-
-    # define loss function
-    loss_function = mse_loss
-
-    # Load images
-    if os.path.isfile(args.source):
-        images = [args.source]
-    elif os.path.isdir(args.source):
-        images = [join(args.source, f) for f in os.listdir(
-            args.source) if isfile(join(args.source, f))]
-        images = sorted(images)
-    else:
-        raise RuntimeError(f'{args.source} is neither a file nor a directory.')
-
-    # Start threads
-    def thread_function(x): return optimization_thread( images, device, seed, loss_function, logger, args, pbar)
-    
-    pbar = tqdm(total=len(images), desc="Processing")
-
-    logger.finish_logging()
-    end = time.time()
-    print(end - start)
-
-
-if __name__ == "__main__":
-    main()
+for batch in batches:
+    pgd_attack(batch, alpha=args.alpha, num_iter=args.num_iter, epsilon=args.epsilon)
+    exit()

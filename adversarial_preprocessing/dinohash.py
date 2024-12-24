@@ -174,7 +174,7 @@ def DinoExtractor():
 # Load model
 dinov2_vitb14_reg = DinoExtractor()
 components = np.load(f"./dinoPCA.npy")
-components_torch = torch.from_numpy(components).cuda()
+components_torch = torch.from_numpy(components).cuda().float()
 
 normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
@@ -197,7 +197,7 @@ def dinohash(ims, differentiable=False, c=5):
     else:
         image_arrays = normalize(ims)
         outs = dinov2_vitb14_reg(image_arrays)
-        outs /= torch.max(torch.norm(outs, dim=1, keepdim=True), 1e-12)
+        outs = outs / torch.norm(outs, dim=1, keepdim=True).clip(min=1e-12)
         outs = outs@components_torch.T
         outs = torch.sigmoid(outs * c)
 
