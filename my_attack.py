@@ -2,32 +2,18 @@ import argparse
 import os
 from os.path import isfile, join
 from random import randint
-import traceback
 
 from PIL import Image
 import torch
 import torchvision.transforms as T
-from onnx import load_model
-from skimage import feature
-from skimage.color import rgb2gray
 from tqdm import tqdm
 
-from models.neuralhash import NeuralHash
-from utils.hashing import compute_hash, load_hash_matrix
-from utils.image_processing import save_images
-from utils.logger import Logger
-from metrics.hamming_distance import hamming_distance
-import threading
-import concurrent.futures
-from itertools import repeat
-import copy
-import time
-from dinohash import DinoExtractor, preprocess, dinohash, normalize
+from dinohash import preprocess, dinohash, normalize
 import torch
 import torch.nn.functional as F
 
 
-def pgd_attack(images, alpha=1/255, num_iter=50, epsilon=8/255):
+def pgd_attack(images, alpha=2/255, num_iter=50, epsilon=8/255):
     """
     Perform a Projected Gradient Descent (PGD) attack.
 
@@ -52,7 +38,6 @@ def pgd_attack(images, alpha=1/255, num_iter=50, epsilon=8/255):
         outputs = dinohash(adv_inputs, differentiable=True, c=10)
 
         loss = torch.nn.functional.mse_loss(outputs, original_hash, reduction="mean")
-        print(loss.item())
         loss.backward()
 
         with torch.no_grad():
@@ -93,6 +78,5 @@ image_files = [join(args.image_dir, f) for f in os.listdir(args.image_dir) if is
 
 batches = [image_files[i:i+args.batch_size] for i in range(0, len(image_files), args.batch_size)]
 
-for batch in batches:
+for batch in tqdm(batches):
     pgd_attack(batch, alpha=args.alpha, num_iter=args.num_iter, epsilon=args.epsilon)
-    exit()

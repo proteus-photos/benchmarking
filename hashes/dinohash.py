@@ -6,7 +6,6 @@ import torchvision.transforms.functional as TF
 from PIL import Image, ImageEnhance
 import os
 from tqdm import tqdm
-from utils import chunk_call
 import random
 import torch.nn.functional as F
 import io
@@ -167,25 +166,40 @@ class BaRTDefense:
     def denoise(self, img):
         """Denoising using gaussian blur"""
         return self.gaussian_blur(img)
-    
+
+
 # Load model
-dinov2_vitb14_reg = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14_reg').cuda().eval()
-components = np.load(f"./hashes/dinoPCA.npy")
-    
+dinov2 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14_reg').cuda().eval()
+
+means = np.load(f"./dinoMeans.npy")
+means_torch = torch.from_numpy(means).cuda().float()
+
+components = np.load(f"./dinoPCA.npy").T
+components_torch = torch.from_numpy(components).cuda().float()
+
+normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
 preprocess = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
 bart = BaRTDefense(min_transforms=2, max_transforms=6)
 
-def dinohash(ims, bits=512, n_average=5, defense=False, *args, **kwargs):
-    image_arrays = torch.stack([preprocess(im) for im in ims]).cuda()
-    
-    with torch.no_grad():
-        outs = dinov2_vitb14_reg(image_arrays).cpu().numpy()
-        outs = outs@components.T
-        outs = outs >= 0
+def dinohash(ims, differentiable=False, c=5):
+    # NOTE: non-differentiable assumes PIL input and differentiable assumes torch.Tensor input
+
+    if not differentiable:
+        image_arrays = torch.stack([normalize(preprocess(im)) for im in ims]).cuda()
+        with torch.no_grad():
+            outs = dinov2(image_arrays).cpu().numpy() - means
+            outs = outs@components
+            outs = outs >= 0
+    else:
+        image_arrays = normalize(ims)
+        outs = dinov2(image_arrays) - means_torch
+        outs = outs / torch.norm(outs, dim=1, keepdim=True).clip(min=1e-12)
+        outs = outs@components_torch
+        outs = torch.sigmoid(outs * c)
 
     return outs

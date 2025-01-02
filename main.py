@@ -1,28 +1,16 @@
 import os
 import numpy as np
 from PIL import Image
-from matplotlib import pyplot as plt
 from tqdm import tqdm
 import gc
 import argparse
-from sklearn.decomposition import PCA
-import joblib
-from scipy.stats import norm, binom
+from scipy.stats import binom
 import pandas as pd
 
 from transformer import Transformer
-from utils import match
 from database import Database
-from matplotlib import pyplot as plt
 
-from hashes.dhash import dhash
-from hashes.ahash import ahash
-from hashes.phash import phash
-from hashes.whash import whash
-from hashes.neuralhash import neuralhash
 from hashes.dinohash import dinohash
-from torch.utils.data import Dataset, DataLoader
-from torchvision.transforms import ToTensor
 
 
 def generate_roc(matches, bits):
@@ -66,15 +54,7 @@ if hasher.__name__ + ".npy" not in os.listdir("databases") or args.refresh:
         images = [Image.open(os.path.join(dataset_folder, image_file)).convert("RGB") for image_file in image_file_batch]
         original_hashes.extend(hasher(images, defense=False))
         gc.collect()
-
-    # pca = PCA(n_components=96)
-    
-    # transformed_features = pca.fit_transform(original_hashes)
-    
-    # weights = pca.components_
-    # np.save(f"./hashes/dinoPCA", weights)
-    # exit()
-
+        
     db = Database(original_hashes, storedir=f"databases/{hasher.__name__}")
 else:
     db = Database(None, storedir=f"databases/{hasher.__name__}")
