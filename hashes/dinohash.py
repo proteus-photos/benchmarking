@@ -167,14 +167,14 @@ class BaRTDefense:
         """Denoising using gaussian blur"""
         return self.gaussian_blur(img)
 
-
+model = "vits14_reg"
 # Load model
-dinov2 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14_reg').cuda().eval()
+dinov2 = torch.hub.load('facebookresearch/dinov2', f'dinov2_{model}').cuda().eval()
 
-means = np.load(f"./dinoMeans.npy")
+means = np.load(f'./hashes/dinov2_{model}_means.npy')
 means_torch = torch.from_numpy(means).cuda().float()
 
-components = np.load(f"./dinoPCA.npy").T
+components = np.load(f'./hashes/dinov2_{model}_PCA.npy').T
 components_torch = torch.from_numpy(components).cuda().float()
 
 normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])

@@ -3,6 +3,7 @@
 *.sh
 /old/weights/
 /datasets/
+/dataset/
 /imagenet.zip
 /plots/
 /logs/
@@ -11,4 +12,3 @@
 /adversarial_preprocessing/evasion_attack_outputs
 /adversarial_preprocessing/temp
 /adversarial_preprocessing/logs
-/adversarial_preprocessing/dataset
