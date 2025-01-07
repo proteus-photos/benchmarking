@@ -1,8 +1,8 @@
 import time
 import torch
-import torch.nn as nn
 import math
-from autoattack.hashs.dinohash import dinohash
+from hashes.dinohash import dinohash
+from torch.nn.functional import binary_cross_entropy_with_logits
 
 def L1_norm(x, keepdim=False):
     z = x.abs().view(x.shape[0], -1).sum(-1)
@@ -25,10 +25,10 @@ def project(x_adv, x0, epsilon):
 @torch.enable_grad()
 def hash_loss_grad(x, original_hash):
     x.requires_grad = True
-    hash = dinohash(x, differentiable=True, c=5)
+    hash = dinohash(x, differentiable=True, c=10)
 
     # contains the loss for each image in the batch
-    loss = torch.nn.functional.mse_loss(hash, original_hash).mean(1)
+    loss = ((hash - original_hash)**2).mean((1,))
 
     # contains overall sum of loss for batch, we dont use mean
     loss_sum = loss.sum()
@@ -73,32 +73,31 @@ def L1_projection(x2, y2, eps1):
     s = s1.unsqueeze(-1) + torch.cumsum((bs2 - bs) * size1, dim=1)
     
     if c2.nelement != 0:
-    
-      lb = torch.zeros_like(c2).float()
-      ub = torch.ones_like(lb) *(bs.shape[1] - 1)
+        lb = torch.zeros_like(c2).float()
+        ub = torch.ones_like(lb) *(bs.shape[1] - 1)
             
-      nitermax = torch.ceil(torch.log2(torch.tensor(bs.shape[1]).float()))
-      counter2 = torch.zeros_like(lb).long()
-      counter = 0
-          
-      while counter < nitermax:
-        counter4 = torch.floor((lb + ub) / 2.)
-        counter2 = counter4.type(torch.LongTensor)
-        
-        c8 = s[c2, counter2] + c[c2] < 0
-        ind3 = c8.nonzero().squeeze(1)
-        ind32 = (~c8).nonzero().squeeze(1)
+        nitermax = torch.ceil(torch.log2(torch.tensor(bs.shape[1]).float()))
+        counter2 = torch.zeros_like(lb).long()
+        counter = 0
+            
+        while counter < nitermax:
+            counter4 = torch.floor((lb + ub) / 2.)
+            counter2 = counter4.type(torch.LongTensor)
+            
+            c8 = s[c2, counter2] + c[c2] < 0
+            ind3 = c8.nonzero().squeeze(1)
+            ind32 = (~c8).nonzero().squeeze(1)
 
-        if ind3.nelement != 0:
-            lb[ind3] = counter4[ind3]
-        if ind32.nelement != 0:
-            ub[ind32] = counter4[ind32]
+            if ind3.nelement != 0:
+                lb[ind3] = counter4[ind3]
+            if ind32.nelement != 0:
+                ub[ind32] = counter4[ind32]
+            
+            counter += 1
         
-        counter += 1
-        
-      lb2 = lb.long()
-      alpha = (-s[c2, lb2] -c[c2]) / size1[c2, lb2 + 1] + bs2[c2, lb2]
-      d[c2] = -torch.min(torch.max(-u[c2], alpha.unsqueeze(-1)), -l[c2])
+        lb2 = lb.long()
+        alpha = (-s[c2, lb2] -c[c2]) / size1[c2, lb2 + 1] + bs2[c2, lb2]
+        d[c2] = -torch.min(torch.max(-u[c2], alpha.unsqueeze(-1)), -l[c2])
     
     return (sigma * d).view(x2.shape)
 
@@ -113,74 +112,41 @@ class APGDAttack():
 
     :param predict:       forward pass function
     :param norm:          Lp-norm of the attack ('Linf', 'L2', 'L0' supported)
-    :param n_restarts:    number of random restarts
     :param n_iter:        number of iterations
     :param eps:           bound on the norm of perturbations
     :param seed:          random seed for the starting point
-    :param loss:          loss to optimize ('ce', 'dlr' supported)
-    :param eot_iter:      iterations for Expectation over Trasformation
     :param rho:           parameter for decreasing the step size
     """
 
     def __init__(
             self,
-            predict,
-            n_iter=100,
             norm='Linf',
-            n_restarts=1,
             eps=None,
             seed=0,
-            loss='ce',
-            eot_iter=1,
             rho=.75,
             topk=None,
             verbose=False,
-            device=None,
-            use_largereps=False,
-            logger=None):
+            device="cuda"):
         """
         AutoPGD implementation in PyTorch
         """
         
-        self.model = predict
-        self.n_iter = n_iter
         self.eps = eps
         self.norm = norm
-        self.n_restarts = n_restarts
         self.seed = seed
-        self.loss = loss
-        self.eot_iter = eot_iter
         self.thr_decr = rho
         self.topk = topk
         self.verbose = verbose
         self.device = device
         self.use_rs = True
-        self.use_largereps = use_largereps
-        self.n_iter_orig = n_iter + 0
-        self.eps_orig = eps + 0.
-        self.y_target = None
-        self.logger = logger
 
         assert self.norm in ['Linf', 'L2', 'L1']
         assert not self.eps is None
 
-        ### set parameters for checkpoints
-        self.n_iter_2 = max(int(0.22 * self.n_iter), 1)
-        self.n_iter_min = max(int(0.06 * self.n_iter), 1)
-        self.size_decr = max(int(0.03 * self.n_iter), 1)
-
-    def init_hyperparam(self, x):
-        if self.device is None:
-            self.device = x.device
-        self.orig_dim = list(x.shape[1:])
-        self.ndims = len(self.orig_dim)
-        if self.seed is None:
-            self.seed = time.time()
-
     def check_oscillation(self, x, j, k, y5, k3=0.75):
         t = torch.zeros(x.shape[1]).to(self.device)
         for counter5 in range(k):
-          t += (x[j - counter5] > x[j - counter5 - 1]).float()
+            t += (x[j - counter5] > x[j - counter5 - 1]).float()
 
         return (t <= k * k3 * torch.ones_like(t)).float()
 
@@ -200,10 +166,19 @@ class APGDAttack():
             except:
                 t = x.abs().reshape([x.shape[0], -1]).sum(dim=-1)
 
-        return x / (t.view(-1, *([1] * self.ndims)) + 1e-12)
+        return x / (t.view(-1, *([1] * self.n_dims)) + 1e-12)
 
     @torch.no_grad()
-    def attack_single_run(self, x):
+    def attack_single_run(self, x, n_iter=50):
+        x = x.to(device=self.device)
+        self.orig_dim = list(x.shape[1:])
+        self.n_dims = len(self.orig_dim)
+        
+        self.n_iter = n_iter
+        self.n_iter_2 = max(int(0.22 * self.n_iter), 1)
+        self.n_iter_min = max(int(0.06 * self.n_iter), 1)
+        self.size_decr = max(int(0.03 * self.n_iter), 1)
+
         original_hash = (dinohash(x, differentiable=True) > 0.5).float()
 
         if self.norm == 'Linf':
@@ -234,7 +209,7 @@ class APGDAttack():
 
         alpha = 2. if self.norm in ['Linf', 'L2'] else 1. if self.norm in ['L1'] else 2e-2
         step_size = alpha * self.eps * torch.ones([x.shape[0], *(
-            [1] * self.ndims)]).to(self.device).detach()
+            [1] * self.n_dims)]).to(self.device).detach()
         x_adv_old = x_adv.clone()
 
         k = self.n_iter_2 + 0
@@ -288,7 +263,8 @@ class APGDAttack():
             x_adv = x_adv_1 + 0.
 
             hash, loss_indiv, grad = hash_loss_grad(x_adv, original_hash)
-
+            binarized_hash = (hash > 0.5).float()
+            print((binarized_hash - original_hash).abs().mean().item())
 
             y1 = loss_indiv.detach().clone()
             loss_steps[i] = y1 + 0
@@ -334,7 +310,7 @@ class APGDAttack():
                 
                 counter3 = 0
     
-        return (x_best, loss_best)
+        return (x_best.cpu(), loss_best)
 
     def decr_eps_pgd(self, x, y, epss, iters, use_rs=True):
         assert len(epss) == len(iters)
@@ -345,7 +321,6 @@ class APGDAttack():
         else:
             x_init = x + torch.randn_like(x)
             x_init += L1_projection(x, x_init - x, 1. * float(epss[0]))
-        eps_target = float(epss[-1])
         if self.verbose:
             print('total iter: {}'.format(sum(iters)))
         for eps, niter in zip(epss, iters):

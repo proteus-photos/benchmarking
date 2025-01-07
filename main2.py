@@ -67,14 +67,6 @@ if hasher.__name__ + ".npy" not in os.listdir("databases") or args.refresh:
         original_hashes.extend(hasher(images, defense=False))
         gc.collect()
 
-    # pca = PCA(n_components=96)
-    
-    # transformed_features = pca.fit_transform(original_hashes)
-    
-    # weights = pca.components_
-    # np.save(f"./hashes/dinoPCA", weights)
-    # exit()
-
     db = Database(original_hashes, storedir=f"databases/{hasher.__name__}")
 else:
     db = Database(None, storedir=f"databases/{hasher.__name__}")

@@ -80,45 +80,6 @@ inverse_normalize = transforms.Compose([
     transforms.Normalize(mean=[-0.485, -0.456, -0.406], std=[1., 1., 1.]),
 ])
 
-def reparametricize(outs, MIN_MARGIN=None):
-    # converts two floats (0, inf) to left margin and right margin
-    # s.t. second point always >= first point
-
-##############################
-    # outs = torch.sigmoid(outs, dim=1)
-
-    # x1s = (x1s < x2s).float() * x1s + (x1s >= x2s).float() * x2s
-    # y1s = (y1s < y2s).float() * y1s + (y1s >= y2s).float() * y2s
-    # x2s = (x1s < x2s).float() * x2s + (x1s >= x2s).float() * x1s
-    # y2s = (y1s < y2s).float() * y2s + (y1s >= y2s).float() * y1s
-
-    # return torch.stack([x1s, y1s, x2s, y2s], dim=1)
-###############################
-    if MIN_MARGIN is None:
-        x1, y1, x2, y2, x3, y3 = outs.unbind(dim=1)
-        x1, x2, x3 = torch.nn.functional.softmax(torch.stack([x1, x2, x3], dim=1), dim=1).unbind(dim=1)
-        y1, y2, y3 = torch.nn.functional.softmax(torch.stack([y1, y2, y3], dim=1), dim=1).unbind(dim=1)
-
-        x_l, x_r = x1, 1 - x3
-        y_t, y_b = y1, 1 - x3
-
-        return torch.stack([x_l, y_t, x_r, y_b], dim=1)
-    else:
-        x1s, y1s, x2s, y2s = outs.unbind(dim=1)
-
-        normalized = (
-            x1s / (x1s + x2s + MIN_MARGIN),
-            y1s / (y1s + y2s + MIN_MARGIN), 
-            (x1s + MIN_MARGIN) / (x1s + x2s + MIN_MARGIN),
-            (y1s + MIN_MARGIN) / (y1s + y2s + MIN_MARGIN)
-        )
-        ret = torch.stack(normalized, dim=1)
-        ret[:, 0] = 0
-        ret[:, 1] = 0
-        ret[:, 2] = 1
-        ret[:, 3] = 1
-        
-        return ret
 
 def match(original_hash, modified_hash):
     # difference = original_hash ^ modified_hash

@@ -28,7 +28,7 @@ def generate_roc(matches, bits):
     
     df.to_csv(f"./results/{hasher.__name__}_{transformation}.csv")
 
-hasher = dinohash # dhash, phash, blockhash, whash
+hasher = dinohash
 
 dataset_folder = './diffusion_data'
 image_files = [f for f in os.listdir(dataset_folder)][:1_000_000]
