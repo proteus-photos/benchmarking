@@ -10,12 +10,13 @@ from tqdm import tqdm
 
 from hashes.dinohash import preprocess, dinohash
 import torch
-import torch.nn.functional as F
 from apgd_attack import APGDAttack
 
 def apgd_attack(image_files, n_iter=50):
     images = torch.stack([preprocess(Image.open(image_file)) for image_file in image_files])
-    adv_images, loss = apgd.attack_single_run(images, n_iter)
+    hashes = dinohash(images, differentiable=False, tensor=True).float()
+
+    adv_images, loss = apgd.attack_single_run(images, hashes, n_iter, log=True)
 
     clean_PIL_images = [T.ToPILImage()(img) for img in images]
     adv_PIL_images = [T.ToPILImage()(img) for img in adv_images]
@@ -46,4 +47,5 @@ batches = [image_files[i:i+args.batch_size] for i in range(0, len(image_files), 
 apgd = APGDAttack(eps=args.epsilon)
 
 for batch in tqdm(batches):
+
     apgd_attack(batch, n_iter=args.n_iter)

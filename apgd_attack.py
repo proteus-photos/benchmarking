@@ -1,8 +1,7 @@
-import time
 import torch
 import math
 from hashes.dinohash import dinohash
-from torch.nn.functional import binary_cross_entropy_with_logits
+from torch.nn.functional import binary_cross_entropy_with_logits, mse_loss, l1_loss
 
 def L1_norm(x, keepdim=False):
     z = x.abs().view(x.shape[0], -1).sum(-1)
@@ -22,13 +21,34 @@ def L0_norm(x):
 def project(x_adv, x0, epsilon):
     return x_adv.clamp(x0-epsilon, x0+epsilon).clamp(0, 1)
 
-@torch.enable_grad()
-def hash_loss_grad(x, original_hash):
-    x.requires_grad = True
-    hash = dinohash(x, differentiable=True, c=10)
-
+def criterion_loss(x, original_hash, loss):
     # contains the loss for each image in the batch
-    loss = ((hash - original_hash)**2).mean((1,))
+    if loss=="mse":
+        hash = dinohash(x, differentiable=True, c=15, logits=False)
+        loss = -(mse_loss(hash, 1-original_hash, reduction="none")).mean(1)
+    elif loss=="bce":
+        hash = dinohash(x, differentiable=True, c=20, logits=True)
+        loss = -binary_cross_entropy_with_logits(hash.flatten(), 1-original_hash.flatten(), reduction="none")
+        # we unflatten and average the loss (across bits) to have one loss per image       
+        loss = loss.view(x.shape[0], -1).mean(1)
+        hash = torch.sigmoid(hash)
+    elif loss=="mae":
+        hash = dinohash(x, differentiable=True, c=10, logits=False)
+        loss = l1_loss(hash, original_hash, reduction="none").mean(1)
+    elif loss=="new":
+        hash = dinohash(x, differentiable=True, c=2, logits=False)
+        loss = -torch.exp(-(hash-original_hash).abs()).mean(1)
+    else:
+        raise ValueError("loss must be 'mse', 'mae' or 'bce'")
+    
+    hash = (hash > 0.5).float()
+    return hash, loss
+
+@torch.enable_grad()
+def hash_loss_grad(x, original_hash, loss="bce"):
+    x.requires_grad = True
+    
+    hash, loss = criterion_loss(x, original_hash, loss=loss)
 
     # contains overall sum of loss for batch, we dont use mean
     loss_sum = loss.sum()
@@ -101,23 +121,7 @@ def L1_projection(x2, y2, eps1):
     
     return (sigma * d).view(x2.shape)
 
-
-
-
-
 class APGDAttack():
-    """
-    AutoPGD
-    https://arxiv.org/abs/2003.01690
-
-    :param predict:       forward pass function
-    :param norm:          Lp-norm of the attack ('Linf', 'L2', 'L0' supported)
-    :param n_iter:        number of iterations
-    :param eps:           bound on the norm of perturbations
-    :param seed:          random seed for the starting point
-    :param rho:           parameter for decreasing the step size
-    """
-
     def __init__(
             self,
             norm='Linf',
@@ -127,9 +131,6 @@ class APGDAttack():
             topk=None,
             verbose=False,
             device="cuda"):
-        """
-        AutoPGD implementation in PyTorch
-        """
         
         self.eps = eps
         self.norm = norm
@@ -169,7 +170,7 @@ class APGDAttack():
         return x / (t.view(-1, *([1] * self.n_dims)) + 1e-12)
 
     @torch.no_grad()
-    def attack_single_run(self, x, n_iter=50):
+    def attack_single_run(self, x, original_hash, n_iter=50, log=False):
         x = x.to(device=self.device)
         self.orig_dim = list(x.shape[1:])
         self.n_dims = len(self.orig_dim)
@@ -178,8 +179,6 @@ class APGDAttack():
         self.n_iter_2 = max(int(0.22 * self.n_iter), 1)
         self.n_iter_min = max(int(0.06 * self.n_iter), 1)
         self.size_decr = max(int(0.03 * self.n_iter), 1)
-
-        original_hash = (dinohash(x, differentiable=True) > 0.5).float()
 
         if self.norm == 'Linf':
             t = 2 * torch.rand(x.shape).to(self.device).detach() - 1
@@ -202,6 +201,7 @@ class APGDAttack():
         
         grad = torch.zeros_like(x)
         hash, loss_indiv, grad = hash_loss_grad(x_adv, original_hash)
+        print("Initial Distance: ", (hash - original_hash).abs().mean().item())
         
         grad_best = grad.clone()
         
@@ -264,7 +264,9 @@ class APGDAttack():
 
             hash, loss_indiv, grad = hash_loss_grad(x_adv, original_hash)
             binarized_hash = (hash > 0.5).float()
-            print((binarized_hash - original_hash).abs().mean().item())
+
+            if log:
+                print((binarized_hash - original_hash).abs().mean().item())
 
             y1 = loss_indiv.detach().clone()
             loss_steps[i] = y1 + 0
@@ -310,7 +312,7 @@ class APGDAttack():
                 
                 counter3 = 0
     
-        return (x_best.cpu(), loss_best)
+        return (x_best, loss_best)
 
     def decr_eps_pgd(self, x, y, epss, iters, use_rs=True):
         assert len(epss) == len(iters)
