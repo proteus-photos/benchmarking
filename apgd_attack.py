@@ -21,22 +21,24 @@ def L0_norm(x):
 def project(x_adv, x0, epsilon):
     return x_adv.clamp(x0-epsilon, x0+epsilon).clamp(0, 1)
 
-def criterion_loss(x, original_hash, loss):
+def criterion_loss(x, original_hash, loss, l2_normalize=False):
     # contains the loss for each image in the batch
     if loss=="mse":
-        hash = dinohash(x, differentiable=True, c=15, logits=False)
+        hash = dinohash(x, differentiable=True, c=15, logits=False, l2_normalize=l2_normalize)
         loss = -(mse_loss(hash, 1-original_hash, reduction="none")).mean(1)
     elif loss=="bce":
-        hash = dinohash(x, differentiable=True, c=20, logits=True)
+        hash = dinohash(x, differentiable=True, c=20, logits=True, l2_normalize=l2_normalize)
         loss = -binary_cross_entropy_with_logits(hash.flatten(), 1-original_hash.flatten(), reduction="none")
         # we unflatten and average the loss (across bits) to have one loss per image       
         loss = loss.view(x.shape[0], -1).mean(1)
         hash = torch.sigmoid(hash)
+        if not l2_normalize:
+            print(hash)
     elif loss=="mae":
-        hash = dinohash(x, differentiable=True, c=10, logits=False)
+        hash = dinohash(x, differentiable=True, c=10, logits=False, l2_normalize=l2_normalize)
         loss = l1_loss(hash, original_hash, reduction="none").mean(1)
     elif loss=="new":
-        hash = dinohash(x, differentiable=True, c=2, logits=False)
+        hash = dinohash(x, differentiable=True, c=2, logits=False, l2_normalize=l2_normalize)
         loss = -torch.exp(-(hash-original_hash).abs()).mean(1)
     else:
         raise ValueError("loss must be 'mse', 'mae' or 'bce'")
@@ -48,7 +50,7 @@ def criterion_loss(x, original_hash, loss):
 def hash_loss_grad(x, original_hash, loss="bce"):
     x.requires_grad = True
     
-    hash, loss = criterion_loss(x, original_hash, loss=loss)
+    hash, loss = criterion_loss(x, original_hash, loss=loss, l2_normalize=True)
 
     # contains overall sum of loss for batch, we dont use mean
     loss_sum = loss.sum()

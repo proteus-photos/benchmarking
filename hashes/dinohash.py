@@ -19,7 +19,7 @@ preprocess = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-def dinohash(image_arrays, differentiable=False, c=5, logits=False, tensor=False):
+def dinohash(image_arrays, differentiable=False, c=5, logits=False, tensor=False, l2_normalize=True):
     # NOTE: differentiable assumes torch.Tensor input
     assert (not logits) or (differentiable), "logits only supported in differentiable mode"
 
@@ -38,7 +38,8 @@ def dinohash(image_arrays, differentiable=False, c=5, logits=False, tensor=False
         image_arrays = normalize(image_arrays)
         outs = dinov2(image_arrays) - means_torch
         outs = outs@components_torch
-        outs = torch.nn.functional.normalize(outs, dim=1) * c
+        if l2_normalize:
+            outs = torch.nn.functional.normalize(outs, dim=1) * c
         if not logits:
             outs = torch.sigmoid(outs)
     

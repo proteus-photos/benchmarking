@@ -20,9 +20,10 @@ class ImageDataset(torch.utils.data.Dataset):
         self.hashes = []
         batches = [image_files[i:i+args.batch_size] for i in range(0, len(image_files), args.batch_size)]
         for batch in tqdm(batches):
-            hashes = dinohash([Image.open(image_file) for image_file in batch], differentiable=False)
+            hashes = dinohash([Image.open(image_file) for image_file in batch], differentiable=False).cpu()
             self.hashes.append(hashes)
         self.hashes = torch.cat(self.hashes).float()
+        np.save('./hashes.npy', self.hashes.numpy())
 
     def __len__(self):
         return len(self.image_files)
@@ -39,8 +40,10 @@ parser.add_argument('--batch_size', dest='batch_size', type=int, default=128,
                     help='batch size for processing images')
 parser.add_argument('--image_dir', dest='image_dir', type=str,
                     default='./dataset', help='directory containing images')
-parser.add_argument('--n_iter', dest='n_iter', type=int, default=50,
-                    help='number of iterations')
+parser.add_argument('--n_iter_min', dest='n_iter_min', type=int, default=5,
+                    help='minimum number of iterations')
+parser.add_argument('--n_iter_max', dest='n_iter_max', type=int, default=15,
+                    help='maximum number of iterations')
 parser.add_argument('--epsilon', dest='epsilon', type=float, default=8/255,
                     help='maximum perturbation (L∞ norm bound)')
 parser.add_argument('--n_epochs', dest='n_epochs', type=int, default=2,
@@ -49,7 +52,7 @@ parser.add_argument('--n_epochs', dest='n_epochs', type=int, default=2,
 args = parser.parse_args()
 os.makedirs('./adversarial_dataset', exist_ok=True)
 
-image_files = [os.path.join(args.image_dir, f) for f in os.listdir(args.image_dir) if os.path.isfile(os.path.join(args.image_dir, f))][:1024]
+image_files = [os.path.join(args.image_dir, f) for f in os.listdir(args.image_dir) if os.path.isfile(os.path.join(args.image_dir, f))]
 
 dataset = ImageDataset(image_files)
 complete_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
@@ -59,26 +62,48 @@ train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_
 test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
 apgd = APGDAttack(eps=args.epsilon)
-optimizer = AdamW(dinov2.parameters(), lr=2e-5)
+optimizer = AdamW(dinov2.parameters(), lr=1e-6, weight_decay=2e-5)
 
 for epoch in range(args.n_epochs):
 
     for image_batch, hash_batch in tqdm(train_loader):
-        hash_batch = hash_batch.cuda()
+        n_iter = np.random.randint(args.n_iter_min, args.n_iter_max)
 
-        adv_images, _ = apgd.attack_single_run(image_batch, hash_batch, args.n_iter, log=True)
+        hash_batch = hash_batch.cuda()
+        adv_images, _ = apgd.attack_single_run(image_batch, hash_batch, n_iter)
         # adv_images = image_batch.cuda()
 
         optimizer.zero_grad()
 
         dinov2.train()
 
-        adv_hash_batch, loss = criterion_loss(adv_images, hash_batch, loss="bce")
+        adv_hash_batch, loss = criterion_loss(adv_images, hash_batch, loss="bce", l2_normalize=False)
         loss = loss.mean()
 
         accuracy = (adv_hash_batch - hash_batch).abs().mean()
-        print("Attack strength:", accuracy.item())
+        # print("Attack strength:", accuracy.item())
 
         loss.backward()
         optimizer.step()
         del hash_batch
+
+    dinov2.eval()
+
+    total_strength = 0
+    n_images = 0
+
+    for image_batch, hash_batch in tqdm(test_loader):
+        hash_batch = hash_batch.cuda()
+
+        adv_images, _ = apgd.attack_single_run(image_batch, hash_batch, args.n_iter_max)
+
+        adv_hash_batch = dinohash(adv_images, differentiable=False, tensor=True).float()
+
+        accuracy = (adv_hash_batch - hash_batch).cpu().abs().mean().item()
+
+        total_strength += accuracy * len(image_batch)
+        n_images += len(image_batch)
+
+        del hash_batch
+    
+    print("Validation attack strength:", total_strength / n_images)
