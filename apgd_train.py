@@ -17,13 +17,16 @@ np.random.seed(0)
 class ImageDataset(torch.utils.data.Dataset):
     def __init__(self, image_files):
         self.image_files = image_files
-        self.hashes = []
-        batches = [image_files[i:i+args.batch_size] for i in range(0, len(image_files), args.batch_size)]
-        for batch in tqdm(batches):
-            hashes = dinohash([Image.open(image_file) for image_file in batch], differentiable=False).cpu()
-            self.hashes.append(hashes)
-        self.hashes = torch.cat(self.hashes).float()
-        np.save('./hashes.npy', self.hashes.numpy())
+        # self.hashes = []
+        # batchSize = 1024
+        # batches = [image_files[i:i+batchSize] for i in range(0, len(image_files), batchSize)]
+        # for batch in tqdm(batches):
+        #     hashes = dinohash([Image.open(image_file) for image_file in batch], differentiable=False).cpu()
+        #     self.hashes.append(hashes)
+        # self.hashes = torch.cat(self.hashes).float()
+        # np.save('./hashes.npy', self.hashes.numpy())
+
+        self.hashes = torch.from_numpy(np.load('./hashes.npy'))
 
     def __len__(self):
         return len(self.image_files)
@@ -36,18 +39,22 @@ class ImageDataset(torch.utils.data.Dataset):
 # Parse command-line arguments
 parser = argparse.ArgumentParser(
     description='Perform neural collision attack.')
-parser.add_argument('--batch_size', dest='batch_size', type=int, default=128,
+parser.add_argument('--batch_size', dest='batch_size', type=int, default=256,
                     help='batch size for processing images')
 parser.add_argument('--image_dir', dest='image_dir', type=str,
                     default='./dataset', help='directory containing images')
-parser.add_argument('--n_iter_min', dest='n_iter_min', type=int, default=5,
-                    help='minimum number of iterations')
-parser.add_argument('--n_iter_max', dest='n_iter_max', type=int, default=15,
+parser.add_argument('--n_iter', dest='n_iter', type=int, default=10,
+                    help='average number of iterations')
+parser.add_argument('--n_iter_range', dest='n_iter_range', type=int, default=3,
                     help='maximum number of iterations')
 parser.add_argument('--epsilon', dest='epsilon', type=float, default=8/255,
                     help='maximum perturbation (L∞ norm bound)')
-parser.add_argument('--n_epochs', dest='n_epochs', type=int, default=2,
+parser.add_argument('--n_epochs', dest='n_epochs', type=int, default=1,
                     help='number of epochs')
+parser.add_argument('--lr', dest='lr', type=float, default=1e-6,
+                    help='learning rate')
+parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=2e-6,
+                    help='weight decay')
 
 args = parser.parse_args()
 os.makedirs('./adversarial_dataset', exist_ok=True)
@@ -57,17 +64,19 @@ image_files = [os.path.join(args.image_dir, f) for f in os.listdir(args.image_di
 dataset = ImageDataset(image_files)
 complete_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
 
-train_dataset, test_dataset = torch.utils.data.random_split(dataset, [int(0.8*len(dataset)), len(dataset)-int(0.8*len(dataset))])
+SPLIT_RATIO = 0.9
+train_dataset, test_dataset = torch.utils.data.random_split(dataset, [int(SPLIT_RATIO*len(dataset)), len(dataset)-int(SPLIT_RATIO*len(dataset))])
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
 apgd = APGDAttack(eps=args.epsilon)
-optimizer = AdamW(dinov2.parameters(), lr=1e-6, weight_decay=2e-5)
+optimizer = AdamW(dinov2.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
 for epoch in range(args.n_epochs):
 
     for image_batch, hash_batch in tqdm(train_loader):
-        n_iter = np.random.randint(args.n_iter_min, args.n_iter_max)
+        n_iter = np.random.randint(args.n_iter - args.n_iter_range,
+                                   args.n_iter + args.n_iter_range)
 
         hash_batch = hash_batch.cuda()
         adv_images, _ = apgd.attack_single_run(image_batch, hash_batch, n_iter)

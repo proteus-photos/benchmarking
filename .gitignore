@@ -13,3 +13,4 @@
 /adversarial_preprocessing/temp
 /adversarial_preprocessing/logs
 /adversarial_dataset/
+hashes.npy
