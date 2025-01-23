@@ -14,9 +14,9 @@ from apgd_attack import APGDAttack
 
 def apgd_attack(image_files, n_iter=50):
     images = torch.stack([preprocess(Image.open(image_file)) for image_file in image_files])
-    hashes = dinohash(images, differentiable=False, tensor=True).float()
-
-    adv_images, loss = apgd.attack_single_run(images, hashes, n_iter, log=True)
+    logits = dinohash(images, differentiable=False, tensor=True, logits=True, l2_normalize=False).float()
+    print(logits)
+    adv_images, loss = apgd.attack_single_run(images, logits, n_iter, log=True)
 
     clean_PIL_images = [T.ToPILImage()(img) for img in images]
     adv_PIL_images = [T.ToPILImage()(img) for img in adv_images]

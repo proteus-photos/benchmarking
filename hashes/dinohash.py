@@ -19,21 +19,20 @@ preprocess = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-def dinohash(image_arrays, differentiable=False, c=5, logits=False, tensor=False, l2_normalize=True):
+def dinohash(image_arrays, differentiable=False, c=1, logits=False, tensor=False, l2_normalize=True):
     # NOTE: differentiable assumes torch.Tensor input
-    assert (not logits) or (differentiable), "logits only supported in differentiable mode"
 
     dinov2.eval()
 
     if not differentiable:
         if not tensor:
             image_arrays = torch.stack([preprocess(im) for im in image_arrays])
-        
         image_arrays = normalize(image_arrays.cuda())
         with torch.no_grad():
             outs = dinov2(image_arrays) - means_torch
-            outs = outs@components_torch
-            outs = outs >= 0
+            outs = outs@components_torch * c
+            if not logits:
+                outs = outs >= 0
     else:
         image_arrays = normalize(image_arrays)
         outs = dinov2(image_arrays) - means_torch

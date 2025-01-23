@@ -21,25 +21,29 @@ def L0_norm(x):
 def project(x_adv, x0, epsilon):
     return x_adv.clamp(x0-epsilon, x0+epsilon).clamp(0, 1)
 
-def criterion_loss(x, original_hash, loss, l2_normalize=False):
+def criterion_loss(x, original_logits, loss, l2_normalize=False):
     # contains the loss for each image in the batch
     if loss=="mse":
+        original_hash = (original_logits >= 0).float()
         hash = dinohash(x, differentiable=True, c=15, logits=False, l2_normalize=l2_normalize)
         loss = -(mse_loss(hash, 1-original_hash, reduction="none")).mean(1)
     elif loss=="bce":
+        original_hash = (original_logits >= 0).float()
         hash = dinohash(x, differentiable=True, c=20, logits=True, l2_normalize=l2_normalize)
         loss = -binary_cross_entropy_with_logits(hash.flatten(), 1-original_hash.flatten(), reduction="none")
         # we unflatten and average the loss (across bits) to have one loss per image       
         loss = loss.view(x.shape[0], -1).mean(1)
         hash = torch.sigmoid(hash)
-        if not l2_normalize:
-            print(hash)
     elif loss=="mae":
+        original_hash = (original_logits >= 0).float()
         hash = dinohash(x, differentiable=True, c=10, logits=False, l2_normalize=l2_normalize)
         loss = l1_loss(hash, original_hash, reduction="none").mean(1)
-    elif loss=="new":
-        hash = dinohash(x, differentiable=True, c=2, logits=False, l2_normalize=l2_normalize)
-        loss = -torch.exp(-(hash-original_hash).abs()).mean(1)
+    elif loss=="target bce":
+        hash = dinohash(x, differentiable=True, c=1, logits=True, l2_normalize=l2_normalize)
+        loss = binary_cross_entropy_with_logits(hash.flatten(), original_hash.flatten(), reduction="none")
+        # we unflatten and average the loss (across bits) to have one loss per image       
+        loss = loss.view(x.shape[0], -1).mean(1)
+        hash = torch.sigmoid(hash)
     else:
         raise ValueError("loss must be 'mse', 'mae' or 'bce'")
     
@@ -47,10 +51,10 @@ def criterion_loss(x, original_hash, loss, l2_normalize=False):
     return hash, loss
 
 @torch.enable_grad()
-def hash_loss_grad(x, original_hash, loss="bce"):
+def hash_loss_grad(x, original_logits, loss="bce"):
     x.requires_grad = True
     
-    hash, loss = criterion_loss(x, original_hash, loss=loss, l2_normalize=True)
+    hash, loss = criterion_loss(x, original_logits, loss=loss, l2_normalize=True)
 
     # contains overall sum of loss for batch, we dont use mean
     loss_sum = loss.sum()
@@ -172,7 +176,8 @@ class APGDAttack():
         return x / (t.view(-1, *([1] * self.n_dims)) + 1e-12)
 
     @torch.no_grad()
-    def attack_single_run(self, x, original_hash, n_iter=50, log=False):
+    def attack_single_run(self, x, original_logits, n_iter=50, log=False):
+        original_hash = (original_logits >= 0).float()
         x = x.to(device=self.device)
         self.orig_dim = list(x.shape[1:])
         self.n_dims = len(self.orig_dim)
@@ -202,7 +207,8 @@ class APGDAttack():
         loss_best_steps = torch.zeros([self.n_iter + 1, x.shape[0]]).to(self.device)
         
         grad = torch.zeros_like(x)
-        hash, loss_indiv, grad = hash_loss_grad(x_adv, original_hash)
+        hash, loss_indiv, grad = hash_loss_grad(x_adv, original_logits)
+        
         print("Initial Distance: ", (hash - original_hash).abs().mean().item())
         
         grad_best = grad.clone()
@@ -264,8 +270,8 @@ class APGDAttack():
                 
             x_adv = x_adv_1 + 0.
 
-            hash, loss_indiv, grad = hash_loss_grad(x_adv, original_hash)
-            binarized_hash = (hash > 0.5).float()
+            hash, loss_indiv, grad = hash_loss_grad(x_adv, original_logits)
+            binarized_hash = (hash >= 0).float()
 
             if log:
                 print((binarized_hash - original_hash).abs().mean().item())

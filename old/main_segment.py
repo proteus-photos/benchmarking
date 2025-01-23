@@ -12,7 +12,7 @@ from hashes.blockhash import blockhash
 from hashes.neuralhash import neuralhash
 from utils import match, create_bokehs, bbox_to_ltrb, clip_to_image
 from database import Database
-from segment import MaskRCNNSegmenter, SAMSegmenter, YOLOSegmenter
+from old.segment import MaskRCNNSegmenter, SAMSegmenter, YOLOSegmenter
 
 from hashes.dhash import dhash
 from hashes.ahash import ahash

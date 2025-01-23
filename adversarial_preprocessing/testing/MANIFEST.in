@@ -1,2 +1,0 @@
-include data/imagenet_class_to_id_map.json
-include data/imagenet_test_image_ids.txt

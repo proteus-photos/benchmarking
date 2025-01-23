@@ -17,16 +17,16 @@ np.random.seed(0)
 class ImageDataset(torch.utils.data.Dataset):
     def __init__(self, image_files):
         self.image_files = image_files
-        # self.hashes = []
+        # self.logits = []
         # batchSize = 1024
         # batches = [image_files[i:i+batchSize] for i in range(0, len(image_files), batchSize)]
         # for batch in tqdm(batches):
-        #     hashes = dinohash([Image.open(image_file) for image_file in batch], differentiable=False).cpu()
-        #     self.hashes.append(hashes)
-        # self.hashes = torch.cat(self.hashes).float()
-        # np.save('./hashes.npy', self.hashes.numpy())
+        #     logits = dinohash([Image.open(image_file) for image_file in batch], differentiable=False, logits=True, c=1).cpu()
+        #     self.logits.append(hashes)
+        # self.logits = torch.cat(self.logits).float()
+        # np.save('./logits.npy', self.logits.numpy())
 
-        self.hashes = torch.from_numpy(np.load('./hashes.npy'))
+        self.logits = torch.from_numpy(np.load('./logits.npy'))[:len(image_files)]
 
     def __len__(self):
         return len(self.image_files)
@@ -34,12 +34,12 @@ class ImageDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         image_file = self.image_files[idx]
         image = preprocess(Image.open(image_file))
-        return image, self.hashes[idx]
+        return image, self.logits[idx]
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(
     description='Perform neural collision attack.')
-parser.add_argument('--batch_size', dest='batch_size', type=int, default=256,
+parser.add_argument('--batch_size', dest='batch_size', type=int, default=400,
                     help='batch size for processing images')
 parser.add_argument('--image_dir', dest='image_dir', type=str,
                     default='./dataset', help='directory containing images')
@@ -59,7 +59,7 @@ parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=2
 args = parser.parse_args()
 os.makedirs('./adversarial_dataset', exist_ok=True)
 
-image_files = [os.path.join(args.image_dir, f) for f in os.listdir(args.image_dir) if os.path.isfile(os.path.join(args.image_dir, f))]
+image_files = [os.path.join(args.image_dir, f) for f in os.listdir(args.image_dir) if os.path.isfile(os.path.join(args.image_dir, f))][:30_000]
 
 dataset = ImageDataset(image_files)
 complete_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
@@ -74,11 +74,13 @@ optimizer = AdamW(dinov2.parameters(), lr=args.lr, weight_decay=args.weight_deca
 
 for epoch in range(args.n_epochs):
 
-    for image_batch, hash_batch in tqdm(train_loader):
+    for image_batch, logits_batch in tqdm(train_loader):
         n_iter = np.random.randint(args.n_iter - args.n_iter_range,
-                                   args.n_iter + args.n_iter_range)
+                                   args.n_iter + args.n_iter_range + 1)
 
-        hash_batch = hash_batch.cuda()
+        logits_batch = logits_batch.cuda()
+        hash_batch = (logits_batch >= 0).float()
+
         adv_images, _ = apgd.attack_single_run(image_batch, hash_batch, n_iter)
         # adv_images = image_batch.cuda()
 
@@ -86,33 +88,38 @@ for epoch in range(args.n_epochs):
 
         dinov2.train()
 
-        adv_hash_batch, loss = criterion_loss(adv_images, hash_batch, loss="bce", l2_normalize=False)
+        adv_hash_batch, loss = criterion_loss(adv_images, logits_batch, loss="bce", l2_normalize=False)
+        # adv_logits = dinohash(adv_images, differentiable=True, tensor=True, logits=True, l2_normalize=False).float()
+        # logits = dinohash(image_batch, differentiable=True, tensor=True, logits=True, l2_normalize=False).float()
+
         loss = loss.mean()
 
         accuracy = (adv_hash_batch - hash_batch).abs().mean()
-        # print("Attack strength:", accuracy.item())
+        print("Attack strength:", accuracy.item())
 
         loss.backward()
         optimizer.step()
-        del hash_batch
+        del hash_batch, logits_batch
 
     dinov2.eval()
 
     total_strength = 0
     n_images = 0
 
-    for image_batch, hash_batch in tqdm(test_loader):
-        hash_batch = hash_batch.cuda()
+for image_batch, logits_batch in tqdm(test_loader):
+    logits_batch = logits_batch.cuda()
+    hash_batch = (logits_batch >= 0).float()
 
-        adv_images, _ = apgd.attack_single_run(image_batch, hash_batch, args.n_iter_max)
+    adv_images, _ = apgd.attack_single_run(image_batch, hash_batch, 10)
 
-        adv_hash_batch = dinohash(adv_images, differentiable=False, tensor=True).float()
+    adv_hash_batch = dinohash(adv_images, differentiable=False, tensor=True).float()
 
-        accuracy = (adv_hash_batch - hash_batch).cpu().abs().mean().item()
+    accuracy = (adv_hash_batch - hash_batch).cpu().abs().mean().item()
 
-        total_strength += accuracy * len(image_batch)
-        n_images += len(image_batch)
+    total_strength += accuracy * len(image_batch)
+    n_images += len(image_batch)
 
-        del hash_batch
-    
-    print("Validation attack strength:", total_strength / n_images)
+    del hash_batch, logits_batch
+
+print("Validation attack strength:")
+print(total_strength / n_images)
