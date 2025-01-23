@@ -22,20 +22,19 @@ def project(x_adv, x0, epsilon):
     return x_adv.clamp(x0-epsilon, x0+epsilon).clamp(0, 1)
 
 def criterion_loss(x, original_logits, loss, l2_normalize=False):
+    original_hash = (original_logits >= 0).float()
+
     # contains the loss for each image in the batch
     if loss=="mse":
-        original_hash = (original_logits >= 0).float()
         hash = dinohash(x, differentiable=True, c=15, logits=False, l2_normalize=l2_normalize)
         loss = -(mse_loss(hash, 1-original_hash, reduction="none")).mean(1)
     elif loss=="bce":
-        original_hash = (original_logits >= 0).float()
         hash = dinohash(x, differentiable=True, c=20, logits=True, l2_normalize=l2_normalize)
         loss = -binary_cross_entropy_with_logits(hash.flatten(), 1-original_hash.flatten(), reduction="none")
         # we unflatten and average the loss (across bits) to have one loss per image       
         loss = loss.view(x.shape[0], -1).mean(1)
         hash = torch.sigmoid(hash)
     elif loss=="mae":
-        original_hash = (original_logits >= 0).float()
         hash = dinohash(x, differentiable=True, c=10, logits=False, l2_normalize=l2_normalize)
         loss = l1_loss(hash, original_hash, reduction="none").mean(1)
     elif loss=="target bce":
@@ -177,6 +176,7 @@ class APGDAttack():
 
     @torch.no_grad()
     def attack_single_run(self, x, original_logits, n_iter=50, log=False):
+
         original_hash = (original_logits >= 0).float()
         x = x.to(device=self.device)
         self.orig_dim = list(x.shape[1:])
@@ -200,6 +200,9 @@ class APGDAttack():
             delta = L1_projection(x, t, self.eps)
             x_adv = x + t + delta
         
+        #### NO NOISE VERSION
+        x_adv = x.clone()
+
         x_adv = x_adv.clamp(0., 1.)
         x_best = x_adv.clone()
 
@@ -207,8 +210,9 @@ class APGDAttack():
         loss_best_steps = torch.zeros([self.n_iter + 1, x.shape[0]]).to(self.device)
         
         grad = torch.zeros_like(x)
+
         hash, loss_indiv, grad = hash_loss_grad(x_adv, original_logits)
-        
+
         print("Initial Distance: ", (hash - original_hash).abs().mean().item())
         
         grad_best = grad.clone()
@@ -271,7 +275,7 @@ class APGDAttack():
             x_adv = x_adv_1 + 0.
 
             hash, loss_indiv, grad = hash_loss_grad(x_adv, original_logits)
-            binarized_hash = (hash >= 0).float()
+            binarized_hash = (hash >= 0.5).float()
 
             if log:
                 print((binarized_hash - original_hash).abs().mean().item())

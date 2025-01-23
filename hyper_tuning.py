@@ -55,7 +55,7 @@ def run_experiment(learning_rate, weight_decay, n_iter_range):
 def objective(trial):
     learning_rate = trial.suggest_float("learning_rate", 1e-7, 1e-4, log=True)
     weight_decay = trial.suggest_float("weight_decay", 1e-7, 1e-4, log=True)
-    n_iter_range = trial.suggest_int("n_iter_range", 1, 5)
+    n_iter_range = trial.suggest_int("n_iter_range", 0, 5)
 
     accuracy = run_experiment(learning_rate, weight_decay, n_iter_range)
     return accuracy
