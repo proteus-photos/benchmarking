@@ -17,14 +17,15 @@ np.random.seed(0)
 class ImageDataset(torch.utils.data.Dataset):
     def __init__(self, image_files):
         self.image_files = image_files
-        self.logits = []
-        batchSize = 4096
-        batches = [image_files[i:i+batchSize] for i in range(0, len(image_files), batchSize)]
-        for batch in tqdm(batches):
-            logits = dinohash([Image.open(image_file) for image_file in batch], differentiable=False, logits=True, c=1).cpu()
-            self.logits.append(logits)
-        self.logits = torch.cat(self.logits).float()
-        np.save('./logits.npy', self.logits.numpy())
+
+        # self.logits = []
+        # batchSize = 4096
+        # batches = [image_files[i:i+batchSize] for i in range(0, len(image_files), batchSize)]
+        # for batch in tqdm(batches):
+        #     logits = dinohash([Image.open(image_file) for image_file in batch], differentiable=False, logits=True, c=1).cpu()
+        #     self.logits.append(logits)
+        # self.logits = torch.cat(self.logits).float()
+        # np.save('./logits.npy', self.logits.numpy())
 
         self.logits = torch.from_numpy(np.load('./logits.npy'))[:len(image_files)]
 
@@ -53,7 +54,7 @@ parser.add_argument('--n_epochs', dest='n_epochs', type=int, default=1,
                     help='number of epochs')
 parser.add_argument('--lr', dest='lr', type=float, default=1e-6,
                     help='learning rate')
-parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=2e-6,
+parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=0,
                     help='weight decay')
 
 args = parser.parse_args()
@@ -81,15 +82,13 @@ for epoch in range(args.n_epochs):
         logits_batch = logits_batch.cuda()
         hash_batch = (logits_batch >= 0).float()
 
-        adv_images, _ = apgd.attack_single_run(image_batch, logits_batch, n_iter)
-        # adv_images = image_batch.cuda()
+        # adv_images, _ = apgd.attack_single_run(image_batch, logits_batch, n_iter)
+        adv_images = image_batch.cuda()
 
         optimizer.zero_grad()
 
         dinov2.train()
         adv_hash_batch, loss = criterion_loss(adv_images, logits_batch, loss="target bce", l2_normalize=False)
-        # adv_logits = dinohash(adv_images, differentiable=True, tensor=True, logits=True, l2_normalize=False).float()
-        # logits = dinohash(image_batch, differentiable=True, tensor=True, logits=True, l2_normalize=False).float()
 
         loss = loss.mean()
 

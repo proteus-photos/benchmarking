@@ -1,6 +1,9 @@
-from PIL import Image, ImageEnhance, ImageFilter
+from PIL import Image, ImageEnhance, ImageFilter, ImageDraw, ImageFont
 import io
 import random
+import string
+
+font = ImageFont.truetype("DejaVuSans.ttf", 20)
 
 class Transformer:
     def __init__(self):
@@ -63,5 +66,21 @@ class Transformer:
         
         elif method == "double screenshot":
             return self.transform(self.transform(image, "screenshot"), "screenshot")
+        elif method == "erase":
+            draw = ImageDraw.Draw(image)
+            size = round(0.2 * min(image.size))
+            coord1 = (random.randint(0, image.size[0]-size), random.randint(0, image.size[1]-size))
+            coord2 = (coord1[0]+size, coord1[1]+size)
+            draw.rectangle((coord1, coord2), fill="gray")
+            return image
+        elif method == "text":
+            draw = ImageDraw.Draw(image)
+
+            random_text = ''.join(random.choices(string.ascii_letters, k=10))
+            text = kwargs.get('text', random_text)
+
+            position = (random.randint(0, image.size[0]), random.randint(0, image.size[1]))
+            draw.text(position, text, fill="white", align="center", font=font)
+            return image
         else:
             raise ValueError('Invalid method')

@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from torchvision import transforms
 
-model = "vits14_reg"
+model = "vitb14_reg"
 # Load model
 dinov2 = torch.hub.load('facebookresearch/dinov2', f'dinov2_{model}').cuda().eval()
 

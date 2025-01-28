@@ -29,9 +29,9 @@ preprocess = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
-BATCH_SIZE = 512
+BATCH_SIZE = 2048
 
-model = "dinov2_vits14_reg"
+model = "dinov2_vitb14_reg"
 dataset = ImageDataset(image_files, transform=preprocess)
 dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, drop_last=False)
 
