@@ -18,14 +18,14 @@ class ImageDataset(torch.utils.data.Dataset):
     def __init__(self, image_files):
         self.image_files = image_files
 
-        # self.logits = []
-        # batchSize = 4096
-        # batches = [image_files[i:i+batchSize] for i in range(0, len(image_files), batchSize)]
-        # for batch in tqdm(batches):
-        #     logits = dinohash([Image.open(image_file) for image_file in batch], differentiable=False, logits=True, c=1).cpu()
-        #     self.logits.append(logits)
-        # self.logits = torch.cat(self.logits).float()
-        # np.save('./logits.npy', self.logits.numpy())
+        self.logits = []
+        batchSize = 4096
+        batches = [image_files[i:i+batchSize] for i in range(0, len(image_files), batchSize)]
+        for batch in tqdm(batches):
+            logits = dinohash([Image.open(image_file) for image_file in batch], differentiable=False, logits=True, c=1).cpu()
+            self.logits.append(logits)
+        self.logits = torch.cat(self.logits).float()
+        np.save('./logits.npy', self.logits.numpy())
 
         self.logits = torch.from_numpy(np.load('./logits.npy'))[:len(image_files)]
 
@@ -40,10 +40,10 @@ class ImageDataset(torch.utils.data.Dataset):
 # Parse command-line arguments
 parser = argparse.ArgumentParser(
     description='Perform neural collision attack.')
-parser.add_argument('--batch_size', dest='batch_size', type=int, default=400,
+parser.add_argument('--batch_size', dest='batch_size', type=int, default=128,
                     help='batch size for processing images')
 parser.add_argument('--image_dir', dest='image_dir', type=str,
-                    default='./dataset', help='directory containing images')
+                    default='./diffusion_data', help='directory containing images')
 parser.add_argument('--n_iter', dest='n_iter', type=int, default=10,
                     help='average number of iterations')
 parser.add_argument('--n_iter_range', dest='n_iter_range', type=int, default=3,
@@ -60,7 +60,8 @@ parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=0
 args = parser.parse_args()
 os.makedirs('./adversarial_dataset', exist_ok=True)
 
-image_files = [os.path.join(args.image_dir, f) for f in os.listdir(args.image_dir) if os.path.isfile(os.path.join(args.image_dir, f))]
+image_files = [os.path.join(args.image_dir, f) for f in os.listdir(args.image_dir) if os.path.isfile(os.path.join(args.image_dir, f))][:10_000]
+image_files.sort()
 
 dataset = ImageDataset(image_files)
 complete_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
@@ -80,15 +81,17 @@ for epoch in range(args.n_epochs):
                                    args.n_iter + args.n_iter_range + 1)
 
         logits_batch = logits_batch.cuda()
+        image_batch = image_batch.cuda()
+        # logits_batch = dinohash(image_batch, differentiable=False, logits=True, c=1).float().cuda()
         hash_batch = (logits_batch >= 0).float()
 
         # adv_images, _ = apgd.attack_single_run(image_batch, logits_batch, n_iter)
-        adv_images = image_batch.cuda()
+        # adv_images = image_batch.cuda()
 
         optimizer.zero_grad()
 
         dinov2.train()
-        adv_hash_batch, loss = criterion_loss(adv_images, logits_batch, loss="target bce", l2_normalize=False)
+        adv_hash_batch, loss = criterion_loss(image_batch, logits_batch, loss="target bce", l2_normalize=False)
 
         loss = loss.mean()
 
@@ -97,7 +100,7 @@ for epoch in range(args.n_epochs):
 
         loss.backward()
         optimizer.step()
-        del hash_batch, logits_batch
+        del hash_batch, logits_batch, image_batch
 
     dinov2.eval()
 

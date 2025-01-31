@@ -1,32 +1,52 @@
 import os
 import numpy as np
 from PIL import Image
-from matplotlib import pyplot as plt
 from tqdm import tqdm
-import gc
-import argparse
-import copy
 import random
 import cv2
 import numpy as np
 from collections import defaultdict
+import pandas as pd
+from scipy.stats import binom
 
 from transformer import Transformer
-from utils import match, tilize, create_model, transform, reparametricize, chunk_call
+from utils import match
 
 from imwatermark import WatermarkEncoder, WatermarkDecoder
 
 transformations = ["blur", "median", "brightness", "contrast"]
 
 dataset_folder = './diffusion_data'
-image_files = [f for f in os.listdir(dataset_folder)][:1_00]
+image_files = [f for f in os.listdir(dataset_folder)][:50_000]
 
+BITS = 96
 
 t = Transformer()
 
+def combined_transform(image):
+    transformations = ["jpeg", transformation, "erase", "text"]
+    for transform in transformations:
+        image = t.transform(image, method=transform)
+    return image
+
+def generate_roc(matches, bits):
+    matches = matches * bits
+    taus = np.arange(bits+1)
+    tpr = [(matches>=tau).mean() for tau in taus]
+
+    fpr = 1 - binom.cdf(taus-1, bits, 0.5)
+    
+    df = pd.DataFrame({
+        "tpr": tpr,
+        "fpr": fpr,
+        "tau": taus
+    })
+    
+    df.to_csv(f"./results/dctdwt_{transformation}.csv")
+
 encoder = WatermarkEncoder()
-decoder = WatermarkDecoder('bits', 96)
-hash = random.choices("01", k=96)
+decoder = WatermarkDecoder('bits', BITS)
+hash = random.choices("01", k=BITS)
 hash_arr = np.array([int(x) for x in hash])
 encoder.set_watermark(wmType="bits", content=hash)
 
@@ -34,12 +54,14 @@ matches = defaultdict(list)
 
 for image_file in tqdm(image_files):
     image_cv2 = cv2.imread(os.path.join(dataset_folder, image_file))
+    if min(image_cv2.shape[:2]) <= 256:
+        continue
     encoded_image = encoder.encode(image_cv2, 'dwtDct')
     encoded_image = cv2.cvtColor(encoded_image, cv2.COLOR_BGR2RGB)
     image_pil = Image.fromarray(encoded_image)
 
     for transformation in transformations:
-        transformed_image = t.transform(t.transform(image_pil, "jpeg"), transformation)
+        transformed_image = combined_transform(image_pil)
         transformed_image = cv2.cvtColor(np.array(transformed_image), cv2.COLOR_RGB2BGR)
 
         mean_colour = transformed_image.mean(axis=0).mean(axis=0)
@@ -60,4 +82,7 @@ for image_file in tqdm(image_files):
     del image_cv2, encoded_image, image_pil
 
 for transformation, matches in matches.items():
+    matches = np.array(matches)
     print(f"{transformation}: {np.mean(matches)} / {np.std(matches)}")
+
+    generate_roc(matches, BITS)

@@ -1,29 +1,37 @@
 import os
 import numpy as np
 from PIL import Image
-from matplotlib import pyplot as plt
 from tqdm import tqdm
 import gc
 import argparse
-from sklearn.decomposition import PCA
-import joblib
-from scipy.stats import norm, binom
+from scipy.stats import binom
 import pandas as pd
-
+from torch.utils.data import DataLoader, Dataset
+from torchvision.transforms import functional as F
 from transformer import Transformer
-from utils import match
 from database import Database
-from matplotlib import pyplot as plt
 
-from hashes.dhash import dhash
-from hashes.ahash import ahash
-from hashes.phash import phash
-from hashes.whash import whash
-from hashes.neuralhash import neuralhash
-from hashes.dinohash import dinohash
-from torch.utils.data import Dataset, DataLoader
-from torchvision.transforms import ToTensor
+from hashes.neuralhash import neuralhash, preprocess
 
+class ImageDataset(Dataset):
+    def __init__(self, image_files, transform=None):
+        self.image_files = image_files
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.image_files)
+
+    def __getitem__(self, idx):
+        image = Image.open(os.path.join(dataset_folder, self.image_files[idx])).convert("RGB")
+        if self.transform:
+            image = self.transform(image)
+        return preprocess(image)
+
+def combined_transform(image):
+    transformations = ["screenshot", transformation, "erase", "text"]
+    for transform in transformations:
+        image = t.transform(image, method=transform)
+    return image
 
 def generate_roc(matches, bits):
     matches = matches * bits
@@ -40,12 +48,12 @@ def generate_roc(matches, bits):
     
     df.to_csv(f"./results/{hasher.__name__}_{transformation}.csv")
 
-hasher = neuralhash # dhash, phash, blockhash, whash
+hasher = neuralhash
 
 dataset_folder = './diffusion_data'
 image_files = [f for f in os.listdir(dataset_folder)][:1_000_000]
 
-BATCH_SIZE = 512
+BATCH_SIZE = 64
 N_IMAGE_RETRIEVAL = 1
 
 parser = argparse.ArgumentParser(description ='Perform retrieval benchmarking.')
@@ -56,56 +64,28 @@ args = parser.parse_args()
 transformation = args.transform
 t = Transformer()
 
+dataset = ImageDataset(image_files, transform=combined_transform)
+dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4)
+
 os.makedirs("databases", exist_ok=True)
 if hasher.__name__ + ".npy" not in os.listdir("databases") or args.refresh:
     print("Creating database for", hasher.__name__)
     original_hashes = []
     image_file_batches = (image_files[i:i+BATCH_SIZE] for i in range(0, len(image_files), BATCH_SIZE))
 
-    for image_file_batch in tqdm(image_file_batches, total=len(image_files)//BATCH_SIZE):
-        images = [Image.open(os.path.join(dataset_folder, image_file)).convert("RGB") for image_file in image_file_batch]
-        original_hashes.extend(hasher(images, defense=False))
+    for image_batch in tqdm(dataloader):
+        original_hashes.extend(hasher(image_batch).cpu())
         gc.collect()
-
+        
     db = Database(original_hashes, storedir=f"databases/{hasher.__name__}")
 else:
     db = Database(None, storedir=f"databases/{hasher.__name__}")
 
-### Evaluate Hamming distance
-
-# transformed_images = [t.transform(Image.open(os.path.join(dataset_folder, image_file)).convert("RGB"), transformation) for image_file in tqdm(image_files)]
-# hashes = hasher(transformed_images)
-# not_hashes = hashes[::-1]
-
-# matches = db.similarity_score(hashes)
-# print("True:")
-# print(matches.mean(), matches.std())
-
-# not_matches = db.similarity_score(not_hashes)
-# print("False:")
-# print(not_matches.mean(), not_matches.std())
-
-# n_matches = 0
-# print(f"Computing top {N_IMAGE_RETRIEVAL} accuracy...")
-# for index, image_file in enumerate(tqdm(image_files)):
-#     image = Image.open(os.path.join(dataset_folder, image_file)).convert("RGB")
-#     transformed_image = t.transform(image, transformation)
-#     modified_hash = hasher([transformed_image])[0]
-#     result = db.query(modified_hash, k=N_IMAGE_RETRIEVAL)
-#     if index in [point["index"] for point in result]:
-#         n_matches += 1
-
-#     gc.collect()
-
 print(f"Computing bit accuracy for {transformation} + {hasher.__name__}...")
 modified_hashes = []
 
-image_file_batches = (image_files[i:i+BATCH_SIZE] for i in range(0, len(image_files), BATCH_SIZE))
-
-for image_file_batch in tqdm(image_file_batches, total=len(image_files)//BATCH_SIZE):
-    images = [Image.open(os.path.join(dataset_folder, image_file)).convert("RGB") for image_file in image_file_batch]
-    transformed_images = [t.transform(t.transform(image, "screenshot"), transformation) for image in images]
-    modified_hashes_batch = hasher(transformed_images, defense=False).tolist()
+for transformed_images in tqdm(dataloader):
+    modified_hashes_batch = hasher(transformed_images).tolist()
     modified_hashes.extend(modified_hashes_batch)
 
 modified_hashes = np.array(modified_hashes)
@@ -116,6 +96,10 @@ inv_matches = db.similarity_score(modified_hashes[::-1])
 
 print(matches.mean(), matches.std())
 print(inv_matches.mean(), inv_matches.std())
+
+with open(f"./results/{hasher.__name__}_{transformation}.txt", "w") as f:
+    f.write(f"Bit accuracy: {matches.mean()} / {matches.std()}\n")
+    f.write(f"Random accuracy: {inv_matches.mean()} / {inv_matches.std()}\n")
 
 generate_roc(matches, bits=bits)
 

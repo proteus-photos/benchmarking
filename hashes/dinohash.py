@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from torchvision import transforms
 
-model = "vitb14_reg"
+model = "vits14_reg"
 # Load model
 dinov2 = torch.hub.load('facebookresearch/dinov2', f'dinov2_{model}').cuda().eval()
 
@@ -19,16 +19,17 @@ preprocess = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-def dinohash(image_arrays, differentiable=False, c=1, logits=False, tensor=False, l2_normalize=True):
+def dinohash(image_arrays, differentiable=False, c=1, logits=False, l2_normalize=True):
     # NOTE: differentiable assumes torch.Tensor input
 
     dinov2.eval()
+    tensor = isinstance(image_arrays, torch.Tensor)
 
     if not differentiable:
         if not tensor:
             image_arrays = torch.stack([preprocess(im) for im in image_arrays])
-        image_arrays = normalize(image_arrays.cuda())
         with torch.no_grad():
+            image_arrays = normalize(image_arrays.cuda())
             outs = dinov2(image_arrays) - means_torch
             outs = outs@components_torch * c
             if not logits:
