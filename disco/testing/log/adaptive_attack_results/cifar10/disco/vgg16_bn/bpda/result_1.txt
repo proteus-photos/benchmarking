@@ -1,0 +1,29 @@
+{
+  "attack": "bpda",
+  "input_defense": "disco",
+  "model_name": "vgg16_bn",
+  "disco_path": [
+    "/data8/john/inr_adv_defense/disco_github/training/save/cifar10/pgd/imnet_mlp/trial_1/epoch-best.pth"
+  ],
+  "defense_disco_path": [
+    "/data8/john/inr_adv_defense/disco_github/training/save/cifar10/pgd/imnet_mlp/trial_1/epoch-best.pth"
+  ],
+  "debug": false,
+  "trial": "1",
+  "batch_size": 50,
+  "norm": "Linf",
+  "dataset": "cifar10",
+  "repeat": 1,
+  "recursive_num": 1,
+  "adaptive": true,
+  "adaptive_iter": 1
+}
+==============
+0 Evaluation
+Clean accuracy: 88.3200%
+Robust accuracy: 47.2600%
+==============
+Avg clean accuracy: 88.3200%
+Std clean accuracy: 0.0000%
+Avg robust accuracy: 47.2600%
+Std robust accuracy: 0.0000%

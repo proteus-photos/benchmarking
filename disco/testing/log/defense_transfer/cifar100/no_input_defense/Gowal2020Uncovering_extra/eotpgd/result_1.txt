@@ -1,0 +1,23 @@
+{
+  "attack": "eotpgd",
+  "input_defense": "no_input_defense",
+  "model_name": "Gowal2020Uncovering_extra",
+  "disco_path": null,
+  "defense_disco_path": null,
+  "debug": false,
+  "trial": "1",
+  "batch_size": 50,
+  "norm": "Linf",
+  "dataset": "cifar100",
+  "repeat": 1,
+  "recursive_num": 1
+}
+==============
+0 Evaluation
+Clean accuracy: 69.1500%
+Robust accuracy: 41.0800%
+==============
+Avg clean accuracy: 69.1500%
+Std clean accuracy: 0.0000%
+Avg robust accuracy: 41.0800%
+Std robust accuracy: 0.0000%

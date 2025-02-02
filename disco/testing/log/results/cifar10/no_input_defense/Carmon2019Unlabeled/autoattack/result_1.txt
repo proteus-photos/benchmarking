@@ -1,0 +1,22 @@
+{
+  "attack": "autoattack",
+  "input_defense": "no_input_defense",
+  "model_name": "Carmon2019Unlabeled",
+  "disco_path": null,
+  "stl_npy_name": "64_p8_lm0.1",
+  "debug": false,
+  "trial": "1",
+  "batch_size": 200,
+  "norm": "Linf",
+  "dataset": "cifar10",
+  "repeat": 1
+}
+==============
+0 Evaluation
+Clean accuracy: 89.6900%
+Robust accuracy: 59.5900%
+==============
+Avg clean accuracy: 89.6900%
+Std clean accuracy: 0.0000%
+Avg robust accuracy: 59.5900%
+Std robust accuracy: 0.0000%

@@ -1,0 +1,22 @@
+{
+  "attack": "autoattack",
+  "input_defense": "medianfilter",
+  "model_name": "Standard",
+  "disco_path": null,
+  "stl_npy_name": "64_p8_lm0.1",
+  "debug": false,
+  "trial": "1",
+  "batch_size": 200,
+  "norm": "Linf",
+  "dataset": "cifar10",
+  "repeat": 1
+}
+==============
+0 Evaluation
+Clean accuracy: 79.6700%
+Robust accuracy: 42.4500%
+==============
+Avg clean accuracy: 79.6700%
+Std clean accuracy: 0.0000%
+Avg robust accuracy: 42.4500%
+Std robust accuracy: 0.0000%

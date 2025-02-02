@@ -1,0 +1,25 @@
+{
+  "attack": "tpgd",
+  "input_defense": "disco",
+  "model_name": "WideResNet-28-10",
+  "disco_path": [
+    "/data8/john/inr_adv_defense/disco_github/training/save/cifar100/pgd/imnet_mlp/trial_1/epoch-best.pth"
+  ],
+  "defense_disco_path": null,
+  "debug": false,
+  "trial": "1",
+  "batch_size": 100,
+  "norm": "Linf",
+  "dataset": "cifar100",
+  "repeat": 1,
+  "recursive_num": 1
+}
+==============
+0 Evaluation
+Clean accuracy: 73.5300%
+Robust accuracy: 74.6900%
+==============
+Avg clean accuracy: 73.5300%
+Std clean accuracy: 0.0000%
+Avg robust accuracy: 74.6900%
+Std robust accuracy: 0.0000%

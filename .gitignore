@@ -15,4 +15,3 @@
 /adversarial_dataset/
 hashes.npy
 logits.npy
-python main2.py --transform=contrast --refresh && python main2.py --transform=brightness && python main2.py --transform=median && python main2.py --transform=blur 

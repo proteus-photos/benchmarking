@@ -1,0 +1,24 @@
+{
+  "attack": "autoattack",
+  "input_defense": "disco",
+  "model_name": "Rebuffi2021Fixing_70_16_cutmix_ddpm",
+  "disco_path": [
+    "/data8/john/inr_adv_defense/disco_github/training/save/cifar100/pgd/imnet_mlp/trial_1/epoch-best.pth"
+  ],
+  "stl_npy_name": "64_p8_lm0.1",
+  "debug": false,
+  "trial": "1",
+  "batch_size": 25,
+  "norm": "Linf",
+  "dataset": "cifar100",
+  "repeat": 1
+}
+==============
+0 Evaluation
+Clean accuracy: 62.9400%
+Robust accuracy: 37.4700%
+==============
+Avg clean accuracy: 62.9400%
+Std clean accuracy: 0.0000%
+Avg robust accuracy: 37.4700%
+Std robust accuracy: 0.0000%

@@ -18,14 +18,14 @@ class ImageDataset(torch.utils.data.Dataset):
     def __init__(self, image_files):
         self.image_files = image_files
 
-        self.logits = []
-        batchSize = 4096
-        batches = [image_files[i:i+batchSize] for i in range(0, len(image_files), batchSize)]
-        for batch in tqdm(batches):
-            logits = dinohash([Image.open(image_file) for image_file in batch], differentiable=False, logits=True, c=1).cpu()
-            self.logits.append(logits)
-        self.logits = torch.cat(self.logits).float()
-        np.save('./logits.npy', self.logits.numpy())
+        # self.logits = []
+        # batchSize = 4096
+        # batches = [image_files[i:i+batchSize] for i in range(0, len(image_files), batchSize)]
+        # for batch in tqdm(batches):
+        #     logits = dinohash([Image.open(image_file) for image_file in batch], differentiable=False, logits=True, c=1).cpu()
+        #     self.logits.append(logits)
+        # self.logits = torch.cat(self.logits).float()
+        # np.save('./logits.npy', self.logits.numpy())
 
         self.logits = torch.from_numpy(np.load('./logits.npy'))[:len(image_files)]
 
@@ -52,7 +52,7 @@ parser.add_argument('--epsilon', dest='epsilon', type=float, default=8/255,
                     help='maximum perturbation (L∞ norm bound)')
 parser.add_argument('--n_epochs', dest='n_epochs', type=int, default=1,
                     help='number of epochs')
-parser.add_argument('--lr', dest='lr', type=float, default=1e-6,
+parser.add_argument('--lr', dest='lr', type=float, default=1e-7,
                     help='learning rate')
 parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=0,
                     help='weight decay')
@@ -60,8 +60,9 @@ parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=0
 args = parser.parse_args()
 os.makedirs('./adversarial_dataset', exist_ok=True)
 
-image_files = [os.path.join(args.image_dir, f) for f in os.listdir(args.image_dir) if os.path.isfile(os.path.join(args.image_dir, f))][:10_000]
+image_files = [os.path.join(args.image_dir, f) for f in os.listdir(args.image_dir) if os.path.isfile(os.path.join(args.image_dir, f))]
 image_files.sort()
+image_files = image_files[:10_000]
 
 dataset = ImageDataset(image_files)
 complete_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
@@ -82,16 +83,18 @@ for epoch in range(args.n_epochs):
 
         logits_batch = logits_batch.cuda()
         image_batch = image_batch.cuda()
+
         # logits_batch = dinohash(image_batch, differentiable=False, logits=True, c=1).float().cuda()
         hash_batch = (logits_batch >= 0).float()
 
-        # adv_images, _ = apgd.attack_single_run(image_batch, logits_batch, n_iter)
+        adv_images, _ = apgd.attack_single_run(image_batch, logits_batch, n_iter, log=False)
+
         # adv_images = image_batch.cuda()
 
         optimizer.zero_grad()
 
         dinov2.train()
-        adv_hash_batch, loss = criterion_loss(image_batch, logits_batch, loss="target bce", l2_normalize=False)
+        adv_hash_batch, loss = criterion_loss(adv_images, logits_batch, loss="target bce", l2_normalize=False)
 
         loss = loss.mean()
 
@@ -107,20 +110,19 @@ for epoch in range(args.n_epochs):
     total_strength = 0
     n_images = 0
 
-for image_batch, logits_batch in tqdm(test_loader):
-    logits_batch = logits_batch.cuda()
-    hash_batch = (logits_batch >= 0).float()
+    for image_batch, logits_batch in tqdm(test_loader):
+        logits_batch = logits_batch.cuda()
+        hash_batch = (logits_batch >= 0).float()
 
-    adv_images, _ = apgd.attack_single_run(image_batch, hash_batch, 10)
+        adv_images, _ = apgd.attack_single_run(image_batch, hash_batch, 10)
 
-    adv_hash_batch = dinohash(adv_images, differentiable=False, tensor=True).float()
+        adv_hash_batch = dinohash(adv_images, differentiable=False).float()
+        accuracy = (adv_hash_batch - hash_batch).cpu().abs().mean().item()
 
-    accuracy = (adv_hash_batch - hash_batch).cpu().abs().mean().item()
+        total_strength += accuracy * len(image_batch)
+        n_images += len(image_batch)
 
-    total_strength += accuracy * len(image_batch)
-    n_images += len(image_batch)
+        del hash_batch, logits_batch
 
-    del hash_batch, logits_batch
-
-print("Validation attack strength:")
-print(total_strength / n_images)
+    print("Validation attack strength:")
+    print(total_strength / n_images)

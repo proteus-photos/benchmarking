@@ -1,0 +1,25 @@
+{
+  "attack": "bpda",
+  "input_defense": "disco",
+  "model_name": "vgg16_bn",
+  "disco_path": [
+    "/data8/john/inr_adv_defense/disco_github/training/save/cifar10/pgd/imnet_mlp/trial_1/epoch-best.pth"
+  ],
+  "defense_disco_path": [
+    "/data8/john/inr_adv_defense/disco_github/training/save/cifar10/pgd/imnet_mlp/trial_1/epoch-best.pth"
+  ],
+  "debug": false,
+  "batch_size": 1,
+  "norm": "Linf",
+  "dataset": "cifar10",
+  "repeat": 1,
+  "recursive_num": 1,
+  "adaptive": true,
+  "adaptive_iter": 3,
+  "measure": "attack"
+}
+=======
+Attack Time :103.9713945388794 FPS: 0.9618030078706473
+=======
+Time mean:103.9713945388794 Time std:0.0
+Fps mean:0.9618030078706473 fps std:0.0

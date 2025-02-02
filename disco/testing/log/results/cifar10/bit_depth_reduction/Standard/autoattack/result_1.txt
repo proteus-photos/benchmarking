@@ -1,0 +1,22 @@
+{
+  "attack": "autoattack",
+  "input_defense": "bit_depth_reduction",
+  "model_name": "Standard",
+  "disco_path": null,
+  "stl_npy_name": "64_p8_lm0.1",
+  "debug": false,
+  "trial": "1",
+  "batch_size": 200,
+  "norm": "Linf",
+  "dataset": "cifar10",
+  "repeat": 1
+}
+==============
+0 Evaluation
+Clean accuracy: 92.6600%
+Robust accuracy: 1.0700%
+==============
+Avg clean accuracy: 92.6600%
+Std clean accuracy: 0.0000%
+Avg robust accuracy: 1.0700%
+Std robust accuracy: 0.0000%

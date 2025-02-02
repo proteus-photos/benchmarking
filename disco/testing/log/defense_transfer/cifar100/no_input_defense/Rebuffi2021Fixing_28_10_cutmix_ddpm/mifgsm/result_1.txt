@@ -1,0 +1,23 @@
+{
+  "attack": "mifgsm",
+  "input_defense": "no_input_defense",
+  "model_name": "Rebuffi2021Fixing_28_10_cutmix_ddpm",
+  "disco_path": null,
+  "defense_disco_path": null,
+  "debug": false,
+  "trial": "1",
+  "batch_size": 100,
+  "norm": "Linf",
+  "dataset": "cifar100",
+  "repeat": 1,
+  "recursive_num": 1
+}
+==============
+0 Evaluation
+Clean accuracy: 62.4100%
+Robust accuracy: 37.3100%
+==============
+Avg clean accuracy: 62.4100%
+Std clean accuracy: 0.0000%
+Avg robust accuracy: 37.3100%
+Std robust accuracy: 0.0000%

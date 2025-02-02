@@ -1,0 +1,22 @@
+{
+  "attack": "autoattack",
+  "input_defense": "bit_depth_reduction",
+  "model_name": "WideResNet-34-10",
+  "disco_path": null,
+  "stl_npy_name": "64_p8_lm0.1",
+  "debug": false,
+  "trial": "1",
+  "batch_size": 32,
+  "norm": "Linf",
+  "dataset": "cifar100",
+  "repeat": 1
+}
+==============
+0 Evaluation
+Clean accuracy: 75.2404%
+Robust accuracy: 5.2183%
+==============
+Avg clean accuracy: 75.2404%
+Std clean accuracy: 0.0000%
+Avg robust accuracy: 5.2183%
+Std robust accuracy: 0.0000%

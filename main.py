@@ -51,7 +51,9 @@ def generate_roc(matches, bits):
 hasher = dinohash
 
 dataset_folder = './diffusion_data'
-image_files = [f for f in os.listdir(dataset_folder)][:1_000_000]
+image_files = [f for f in os.listdir(dataset_folder)]
+image_files.sort()
+image_files = image_files[:1_000_000]
 
 BATCH_SIZE = 128
 N_IMAGE_RETRIEVAL = 1

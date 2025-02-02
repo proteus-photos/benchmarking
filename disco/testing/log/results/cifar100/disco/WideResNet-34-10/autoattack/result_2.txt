@@ -1,0 +1,24 @@
+{
+  "attack": "autoattack",
+  "input_defense": "disco",
+  "model_name": "WideResNet-34-10",
+  "disco_path": [
+    "/data8/john/inr_adv_defense/disco_github/training/save/cifar100//bim/imnet_mlp/trial_1/epoch-best.pth"
+  ],
+  "stl_npy_name": "64_p8_lm0.1",
+  "debug": false,
+  "trial": "2",
+  "batch_size": 50,
+  "norm": "Linf",
+  "dataset": "cifar100",
+  "repeat": 1
+}
+==============
+0 Evaluation
+Clean accuracy: 72.6700%
+Robust accuracy: 69.8600%
+==============
+Avg clean accuracy: 72.6700%
+Std clean accuracy: 0.0000%
+Avg robust accuracy: 69.8600%
+Std robust accuracy: 0.0000%

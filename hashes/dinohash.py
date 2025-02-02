@@ -22,7 +22,6 @@ preprocess = transforms.Compose([
 def dinohash(image_arrays, differentiable=False, c=1, logits=False, l2_normalize=True):
     # NOTE: differentiable assumes torch.Tensor input
 
-    dinov2.eval()
     tensor = isinstance(image_arrays, torch.Tensor)
 
     if not differentiable:

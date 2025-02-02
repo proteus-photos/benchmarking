@@ -1,0 +1,23 @@
+{
+  "attack": "eotpgd",
+  "input_defense": "no_input_defense",
+  "model_name": "Gowal2021Improving_28_10_ddpm_100m",
+  "disco_path": null,
+  "stl_npy_name": "64_p8_lm0.1",
+  "debug": false,
+  "trial": "1",
+  "batch_size": 50,
+  "norm": "Linf",
+  "dataset": "cifar10",
+  "repeat": 1,
+  "recursive_num": 1
+}
+==============
+0 Evaluation
+Clean accuracy: 87.5000%
+Robust accuracy: 66.6500%
+==============
+Avg clean accuracy: 87.5000%
+Std clean accuracy: 0.0000%
+Avg robust accuracy: 66.6500%
+Std robust accuracy: 0.0000%

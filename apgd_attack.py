@@ -43,6 +43,12 @@ def criterion_loss(x, original_logits, loss, l2_normalize=False):
         # we unflatten and average the loss (across bits) to have one loss per image       
         loss = loss.view(x.shape[0], -1).mean(1)
         hash = torch.sigmoid(logits)
+    elif loss=="target mse":
+        logits = dinohash(x, differentiable=True, c=1, logits=True, l2_normalize=l2_normalize)
+        loss = mse_loss(logits.flatten(), original_logits.flatten(), reduction="none")
+        # we unflatten and average the loss (across bits) to have one loss per image       
+        loss = loss.view(x.shape[0], -1).mean(1)
+        hash = torch.sigmoid(logits)
     else:
         raise ValueError("loss must be 'mse', 'mae' or 'bce'")
     
@@ -201,7 +207,7 @@ class APGDAttack():
             x_adv = x + t + delta
         
         #### NO NOISE VERSION
-        # x_adv = x.clone()
+        x_adv = x.clone()
 
         x_adv = x_adv.clamp(0., 1.)
         x_best = x_adv.clone()
@@ -213,7 +219,7 @@ class APGDAttack():
 
         hash, loss_indiv, grad = hash_loss_grad(x_adv, original_logits)
 
-        print("Initial Distance: ", (hash - original_hash).abs().mean().item())
+        # print("Initial Distance: ", (hash - original_hash).abs().mean().item())
         
         grad_best = grad.clone()
         
