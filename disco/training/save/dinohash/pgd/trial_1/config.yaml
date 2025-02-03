@@ -1,0 +1,73 @@
+train_dataset:
+  dataset:
+    name: paired-image-folders
+    args:
+      root_path_1: ../../adversarial_data/train/adv
+      root_path_2: ../../adversarial_data/train/clean
+      repeat: 1
+      cache: none
+  wrapper:
+    name: sr-implicit-paired-adv
+    args:
+      inp_size: 48
+      augment: true
+  batch_size: 128
+val_dataset:
+  dataset:
+    name: paired-image-folders
+    args:
+      root_path_1: ../../adversarial_data/val/adv
+      root_path_2: ../../adversarial_data/val/clean
+      cache: none
+  wrapper:
+    name: sr-implicit-paired-adv
+    args:
+      inp_size: 48
+  batch_size: 256
+data_norm:
+  inp:
+    sub:
+    - 0.5
+    div:
+    - 0.5
+  gt:
+    sub:
+    - 0.5
+    div:
+    - 0.5
+model:
+  name: liif
+  args:
+    encoder_spec:
+      name: edsr-baseline
+      args:
+        no_upsampling: true
+    imnet_spec:
+      name: mlp
+      args:
+        out_dim: 3
+        hidden_list:
+        - 256
+        - 256
+        - 256
+        - 256
+optimizer:
+  name: adam
+  args:
+    lr: 0.0001
+epoch_max: 1
+multi_step_lr:
+  milestones:
+  - 200
+  - 400
+  - 600
+  - 800
+  gamma: 0.5
+epoch_val: 1
+epoch_save: 1
+L2_reg:
+  flag: false
+  weight: 0
+gram_reg:
+  flag: false
+  weight: 0

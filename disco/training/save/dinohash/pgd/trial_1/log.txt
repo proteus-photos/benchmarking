@@ -1,0 +1,11 @@
+train dataset: size=1000000
+  inp: shape=(3, 48, 48)
+  coord: shape=(2304, 2)
+  cell: shape=(2304, 2)
+  gt: shape=(2304, 3)
+val dataset: size=250000
+  inp: shape=(3, 48, 48)
+  coord: shape=(2304, 2)
+  cell: shape=(2304, 2)
+  gt: shape=(2304, 3)
+model: #params=1.6M
