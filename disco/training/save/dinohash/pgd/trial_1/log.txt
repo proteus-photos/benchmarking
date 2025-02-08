@@ -9,3 +9,4 @@ val dataset: size=250000
   cell: shape=(2304, 2)
   gt: shape=(2304, 3)
 model: #params=1.6M
+epoch 1/1, train purifier_loss : loss=0.0331, train loss_all : loss=0.0331, val: psnr=33.8511, 29.9m 29.9m/29.9m

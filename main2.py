@@ -11,7 +11,7 @@ from torchvision.transforms import functional as F
 from transformer import Transformer
 from database import Database
 
-from hashes.neuralhash import neuralhash, preprocess
+from hashes.dinohash import dinohash, preprocess
 
 class ImageDataset(Dataset):
     def __init__(self, image_files, transform=None):
@@ -48,14 +48,14 @@ def generate_roc(matches, bits):
     
     df.to_csv(f"./results/{hasher.__name__}_{transformation}.csv")
 
-hasher = neuralhash
+hasher = dinohash
 
 dataset_folder = './diffusion_data'
 image_files = [f for f in os.listdir(dataset_folder)]
 image_files.sort()
 image_files = image_files[:1_000_000]
 
-BATCH_SIZE = 64
+BATCH_SIZE = 128
 N_IMAGE_RETRIEVAL = 1
 
 parser = argparse.ArgumentParser(description ='Perform retrieval benchmarking.')

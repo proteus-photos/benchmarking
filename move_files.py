@@ -23,7 +23,7 @@ for i, filename in enumerate(tqdm(files)):
     if filename.startswith("clean"):
         destination_path = os.path.join(dest_folder, file_type, "clean", filename.split("_")[1].replace(".jpg", ".png"))
     elif filename.startswith("adv"):
-        destination_path = os.path.join(dest_folder, file_type, "adv", filename.split("_")[1].replace(".jpg", ".png"))
+        destination_path = os.path.join(dest_folder, file_type, "adv",   filename.split("_")[1].replace(".jpg", ".png"))
     else:
         print("whatttt", filename)
     shutil.move(source_path, destination_path)

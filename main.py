@@ -8,9 +8,10 @@ from scipy.stats import binom
 import pandas as pd
 from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import functional as F
+
+from inr import INR
 from transformer import Transformer
 from database import Database
-
 from hashes.dinohash import dinohash, preprocess
 
 class ImageDataset(Dataset):
@@ -22,13 +23,13 @@ class ImageDataset(Dataset):
         return len(self.image_files)
 
     def __getitem__(self, idx):
-        image = Image.open(os.path.join(dataset_folder, self.image_files[idx])).convert("RGB")
+        image = Image.open(os.path.join(dataset_folder, self.image_files[idx])).convert("RGB").transpose(Image.Transpose.FLIP_LEFT_RIGHT)
         if self.transform:
             image = self.transform(image)
         return preprocess(image)
 
 def combined_transform(image):
-    transformations = ["screenshot", transformation, "erase", "text"]
+    transformations = []
     for transform in transformations:
         image = t.transform(image, method=transform)
     return image
@@ -50,16 +51,19 @@ def generate_roc(matches, bits):
 
 hasher = dinohash
 
-dataset_folder = './diffusion_data'
+dataset_folder = './adversarial_data/train/adv'
 image_files = [f for f in os.listdir(dataset_folder)]
 image_files.sort()
-image_files = image_files[:1_000_000]
+image_files = image_files[:1_000]
 
 BATCH_SIZE = 128
 N_IMAGE_RETRIEVAL = 1
 
 parser = argparse.ArgumentParser(description ='Perform retrieval benchmarking.')
 parser.add_argument('-r', '--refresh', action='store_true')
+parser.add_argument('--defense', dest='defense', type=str, default=None,
+                    help='path to defense model')
+
 parser.add_argument('--transform')
 args = parser.parse_args()
 
@@ -68,6 +72,9 @@ t = Transformer()
 
 dataset = ImageDataset(image_files, transform=combined_transform)
 dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4)
+
+if args.defense:
+    defense = INR(device='cuda', pretrain_inr_path=args.defense)
 
 os.makedirs("databases", exist_ok=True)
 if hasher.__name__ + ".npy" not in os.listdir("databases") or args.refresh:
@@ -87,6 +94,9 @@ print(f"Computing bit accuracy for {transformation} + {hasher.__name__}...")
 modified_hashes = []
 
 for transformed_images in tqdm(dataloader):
+    transformed_images = transformed_images.cuda()
+    if args.defense:
+        transformed_images = defense.forward(transformed_images)
     modified_hashes_batch = hasher(transformed_images).tolist()
     modified_hashes.extend(modified_hashes_batch)
 

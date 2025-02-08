@@ -84,7 +84,10 @@ class Database:
         return return_data
 
     def similarity_score(self, query_hashes):
-        similarity_score = (query_hashes == self.hashes).mean(1)
+        if len(query_hashes) != len(self.hashes):
+            print(f"Warning: There are {len(query_hashes)} query hashes but {len(self.hashes)} database hashes")
+
+        similarity_score = (query_hashes == self.hashes[:len(query_hashes)]).mean(1)
 
         return similarity_score
     

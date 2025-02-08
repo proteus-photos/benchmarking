@@ -1,6 +1,7 @@
 **/__pycache__
 **/imagenet
 *.sh
+*.pth
 /old/weights/
 /datasets/
 /dataset/
@@ -12,6 +13,8 @@
 /adversarial_preprocessing/evasion_attack_outputs
 /adversarial_preprocessing/temp
 /adversarial_preprocessing/logs
-/adversarial_dataset/
+/adversarial_data/
+/adversarial_dataset
 hashes.npy
 logits.npy
+/disco/training/save
