@@ -2,13 +2,14 @@ train_dataset:
   dataset:
     name: paired-image-folders
     args:
-      root_path_1: "../../adversarial_data/train/adv"
-      root_path_2: "../../adversarial_data/train/clean"
+      root_path_1: "../../adversarial_dataset/adv"
+      root_path_2: "../../diffusion_data/"
       cache: 'none' #in_memory
+      train_or_val: 'train'
   wrapper:
     name: sr-implicit-paired-adv
     args:
-      inp_size: 64
+      inp_size: 48
       augment: true
   batch_size: 128
 
@@ -16,14 +17,15 @@ val_dataset:
   dataset:
     name: paired-image-folders
     args:
-      root_path_1: "../../adversarial_data/val/adv" 
-      root_path_2: "../../adversarial_data/val/clean"
-      repeat: 3
+      root_path_1: "../../adversarial_dataset/adv"
+      root_path_2: "../../diffusion_data/"
+      train_or_val: 'val'
+      repeat: 1
       cache: 'none' #in_memory
   wrapper:
     name: sr-implicit-paired-adv
     args:
-      inp_size: 96
+      inp_size: 64
   batch_size: 64
 
 data_norm:
@@ -49,7 +51,7 @@ optimizer:
   args:
     lr: 1.e-4
 
-epoch_max: 5
+epoch_max: 50
 multi_step_lr:
   milestones: [200, 400, 600, 800]
   gamma: 0.5
@@ -65,3 +67,4 @@ gram_reg:
    flag: False
    weight: 0
 
+resume: "/mnt/additional-disk/home/singh/benchmarking/disco/training/save/dinohash/pgd/trial_3/epoch-best.pth"

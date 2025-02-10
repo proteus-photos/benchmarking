@@ -16,15 +16,26 @@ from datasets import register
 class ImageFolder(Dataset):
 
     def __init__(self, root_path, split_file=None, split_key=None, first_k=None,
-                 repeat=1, cache='none'):
+                 repeat=1, cache='none', **kwargs):
         self.repeat = repeat
         self.cache = cache
+        self.train_or_val = kwargs.get('train_or_val', None)
+        self.im_size = kwargs.get('im_size', None)
 
         if split_file is None:
             filenames = sorted(os.listdir(root_path))
         else:
             with open(split_file, 'r') as f:
                 filenames = json.load(f)[split_key]
+
+        if kwargs.get("max_len", None) is not None:
+            filenames = filenames[:kwargs["max_len"]]
+
+        if self.train_or_val == 'train':
+            filenames = filenames[:int(len(filenames) * 0.8)]
+        elif self.train_or_val == 'val':
+            filenames = filenames[int(len(filenames) * 0.8):]
+
         if first_k is not None:
             filenames = filenames[:first_k]
 
@@ -60,7 +71,10 @@ class ImageFolder(Dataset):
         x = self.files[idx % len(self.files)]
 
         if self.cache == 'none':
-            return transforms.ToTensor()(Image.open(x).convert('RGB'))
+            im =  Image.open(x).convert('RGB')
+            if self.im_size is not None:
+                im = im.resize((self.im_size, self.im_size))
+            return transforms.ToTensor()(im)
 
         elif self.cache == 'bin':
             with open(x, 'rb') as f:
@@ -77,11 +91,14 @@ class ImageFolder(Dataset):
 class PairedImageFolders(Dataset):
 
     def __init__(self, root_path_1, root_path_2, **kwargs):
-        self.dataset_1 = ImageFolder(root_path_1, **kwargs)
-        self.dataset_2 = ImageFolder(root_path_2, **kwargs)
+        self.dataset_adv = ImageFolder(root_path_1, **kwargs)
+        max_len = len(os.listdir(root_path_1))
+        im_size = Image.open(os.path.join(root_path_1, os.listdir(root_path_1)[0])).size[0]
+
+        self.dataset_clean = ImageFolder(root_path_2, max_len=max_len, im_size=im_size, **kwargs)
 
     def __len__(self):
-        return len(self.dataset_1)
+        return len(self.dataset_adv)
 
     def __getitem__(self, idx):
-        return self.dataset_1[idx], self.dataset_2[idx]
+        return self.dataset_adv[idx], self.dataset_clean[idx]

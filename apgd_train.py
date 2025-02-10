@@ -5,6 +5,7 @@ from PIL import Image
 import torch
 from torch.optim import AdamW
 from tqdm import tqdm
+import copy
 
 import numpy as np
 from hashes.dinohash import preprocess, normalize, dinov2, dinohash
@@ -14,9 +15,39 @@ from apgd_attack import APGDAttack, criterion_loss
 torch.manual_seed(0)
 np.random.seed(0)
 
+BITS = 96
+
+def assign_learning_rate(param_group, new_lr):
+    param_group["lr"] = new_lr
+
+def _warmup_lr(base_lr, warmup_length, step):
+    return base_lr * (step + 1) / warmup_length
+
+def cosine_lr(optimizer, base_lrs, warmup_length, steps):
+    if not isinstance(base_lrs, list):
+        base_lrs = [base_lrs for _ in optimizer.param_groups]
+    assert len(base_lrs) == len(optimizer.param_groups)
+    def _lr_adjuster(step):
+        for param_group, base_lr in zip(optimizer.param_groups, base_lrs):
+            if step < warmup_length:
+                lr = _warmup_lr(base_lr, warmup_length, step)
+            else:
+                e = step - warmup_length
+                es = steps - warmup_length
+                lr = 0.5 * (1 + np.cos(np.pi * e / es)) * base_lr
+            assign_learning_rate(param_group, lr)
+    return _lr_adjuster
+
 class ImageDataset(torch.utils.data.Dataset):
     def __init__(self, image_files):
         self.image_files = image_files
+        self.computed = torch.zeros(len(image_files), dtype=torch.bool)
+        self.logits = torch.zeros(len(image_files), BITS)
+        self.batch_size = 32
+
+        self.mydinov2 = copy.deepcopy(dinov2)
+        for param in self.mydinov2.parameters():
+            param.requires_grad = False
 
         # self.logits = []
         # batchSize = 4096
@@ -27,14 +58,21 @@ class ImageDataset(torch.utils.data.Dataset):
         # self.logits = torch.cat(self.logits).float()
         # np.save('./logits.npy', self.logits.numpy())
 
-        self.logits = torch.from_numpy(np.load('./logits.npy'))[:len(image_files)]
-
     def __len__(self):
         return len(self.image_files)
 
     def __getitem__(self, idx):
+        if not self.computed[idx]:
+            start = (idx // self.batch_size) * self.batch_size
+            end = min(start + self.batch_size, len(self.image_files))
+            images = [preprocess(Image.open(image_file)) for image_file in self.image_files[start:end]]
+            images = torch.stack(images)
+            logits = dinohash(images, differentiable=False, logits=True,
+                              c=1, mydinov2=self.mydinov2)
+            self.logits[start:end] = logits
         image_file = self.image_files[idx]
         image = preprocess(Image.open(image_file))
+
         return image, self.logits[idx]
 
 # Parse command-line arguments
@@ -52,9 +90,9 @@ parser.add_argument('--epsilon', dest='epsilon', type=float, default=8/255,
                     help='maximum perturbation (L∞ norm bound)')
 parser.add_argument('--n_epochs', dest='n_epochs', type=int, default=1,
                     help='number of epochs')
-parser.add_argument('--lr', dest='lr', type=float, default=1e-7,
+parser.add_argument('--lr', dest='lr', type=float, default=1e-5,
                     help='learning rate')
-parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=0,
+parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=1e-4,
                     help='weight decay')
 
 args = parser.parse_args()
@@ -74,6 +112,11 @@ test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_si
 
 apgd = APGDAttack(eps=args.epsilon)
 optimizer = AdamW(dinov2.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+scheduler = cosine_lr(optimizer, args.lr, args.warmup, args.steps)
+
+
+for param in dinov2.parameters():
+    param.requires_grad = True
 
 for epoch in range(args.n_epochs):
 
@@ -94,7 +137,7 @@ for epoch in range(args.n_epochs):
         optimizer.zero_grad()
 
         dinov2.train()
-        adv_hash_batch, loss = criterion_loss(adv_images, logits_batch, loss="target bce", l2_normalize=False)
+        adv_hash_batch, loss = criterion_loss(adv_images, logits_batch, loss="target mse", l2_normalize=False)
 
         loss = loss.mean()
 
