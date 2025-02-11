@@ -5,6 +5,9 @@ from PIL import Image
 import pickle
 import imageio
 import numpy as np
+import random
+import io
+
 import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
@@ -21,6 +24,7 @@ class ImageFolder(Dataset):
         self.cache = cache
         self.train_or_val = kwargs.get('train_or_val', None)
         self.im_size = kwargs.get('im_size', None)
+        self.jpeg = kwargs.get('jpeg', False)
 
         if split_file is None:
             filenames = sorted(os.listdir(root_path))
@@ -74,6 +78,16 @@ class ImageFolder(Dataset):
             im =  Image.open(x).convert('RGB')
             if self.im_size is not None:
                 im = im.resize((self.im_size, self.im_size))
+            # if we doing jpeg theres a 20% compression happening
+            if self.jpeg and random.random() < 0.2:
+                quality = random.randint(70, 100)
+
+                img_byte_arr = io.BytesIO()
+                im.save(img_byte_arr, format='JPEG', quality=quality)
+                img_byte_arr = img_byte_arr.getvalue()
+                
+                im = Image.open(io.BytesIO(img_byte_arr))
+            
             return transforms.ToTensor()(im)
 
         elif self.cache == 'bin':
@@ -91,7 +105,7 @@ class ImageFolder(Dataset):
 class PairedImageFolders(Dataset):
 
     def __init__(self, root_path_1, root_path_2, **kwargs):
-        self.dataset_adv = ImageFolder(root_path_1, **kwargs)
+        self.dataset_adv = ImageFolder(root_path_1, jpeg=True, **kwargs)
         max_len = len(os.listdir(root_path_1))
         im_size = Image.open(os.path.join(root_path_1, os.listdir(root_path_1)[0])).size[0]
 

@@ -11,6 +11,7 @@ import numpy as np
 from hashes.dinohash import preprocess, normalize, dinov2, dinohash
 import torch
 from apgd_attack import APGDAttack, criterion_loss
+from utils import AverageMeter
 
 torch.manual_seed(0)
 np.random.seed(0)
@@ -43,7 +44,7 @@ class ImageDataset(torch.utils.data.Dataset):
         self.image_files = image_files
         self.computed = torch.zeros(len(image_files), dtype=torch.bool)
         self.logits = torch.zeros(len(image_files), BITS)
-        self.batch_size = 32
+        self.batch_size = 16
 
         self.mydinov2 = copy.deepcopy(dinov2)
         for param in self.mydinov2.parameters():
@@ -70,6 +71,7 @@ class ImageDataset(torch.utils.data.Dataset):
             logits = dinohash(images, differentiable=False, logits=True,
                               c=1, mydinov2=self.mydinov2)
             self.logits[start:end] = logits
+            self.computed[start:end] = True
         image_file = self.image_files[idx]
         image = preprocess(Image.open(image_file))
 
@@ -78,13 +80,13 @@ class ImageDataset(torch.utils.data.Dataset):
 # Parse command-line arguments
 parser = argparse.ArgumentParser(
     description='Perform neural collision attack.')
-parser.add_argument('--batch_size', dest='batch_size', type=int, default=128,
+parser.add_argument('--batch_size', dest='batch_size', type=int, default=256,
                     help='batch size for processing images')
 parser.add_argument('--image_dir', dest='image_dir', type=str,
                     default='./diffusion_data', help='directory containing images')
 parser.add_argument('--n_iter', dest='n_iter', type=int, default=10,
                     help='average number of iterations')
-parser.add_argument('--n_iter_range', dest='n_iter_range', type=int, default=3,
+parser.add_argument('--n_iter_range', dest='n_iter_range', type=int, default=0,
                     help='maximum number of iterations')
 parser.add_argument('--epsilon', dest='epsilon', type=float, default=8/255,
                     help='maximum perturbation (L∞ norm bound)')
@@ -94,78 +96,113 @@ parser.add_argument('--lr', dest='lr', type=float, default=1e-5,
                     help='learning rate')
 parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=1e-4,
                     help='weight decay')
+parser.add_argument('--warmup', dest='warmup', type=int, default=1_40,
+                    help='number of warmup steps')
+parser.add_argument('--steps', dest='steps', type=int, default=20_00,
+                    help='number of steps')
+parser.add_argument('--start_step', dest='start_step', type=int, default=0,
+                    help='starting step')
+parser.add_argument('--clean_weight', dest='clean_weight', type=float, default=.0,
+                    help='weight of clean loss')
+parser.add_argument('--val_freq', dest='val_freq', type=int, default=50,
+                    help='validation frequency')
 
 args = parser.parse_args()
 os.makedirs('./adversarial_dataset', exist_ok=True)
 
 image_files = [os.path.join(args.image_dir, f) for f in os.listdir(args.image_dir) if os.path.isfile(os.path.join(args.image_dir, f))]
 image_files.sort()
-image_files = image_files[:10_000]
+image_files = image_files[:1_000_000]
 
 dataset = ImageDataset(image_files)
 complete_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
 
-SPLIT_RATIO = 0.9
+SPLIT_RATIO = 0.8
 train_dataset, test_dataset = torch.utils.data.random_split(dataset, [int(SPLIT_RATIO*len(dataset)), len(dataset)-int(SPLIT_RATIO*len(dataset))])
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
 apgd = APGDAttack(eps=args.epsilon)
-optimizer = AdamW(dinov2.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+optimizer = AdamW(dinov2.parameters(), lr=args.lr, weight_decay=args.weight_decay, betas=(0.9, 0.95))
 scheduler = cosine_lr(optimizer, args.lr, args.warmup, args.steps)
-
+step_total = args.start_step
+epoch_total = 0
 
 for param in dinov2.parameters():
     param.requires_grad = True
 
-for epoch in range(args.n_epochs):
+while step_total < args.steps:
+    pbar = tqdm(train_loader)
+    loss_meter = AverageMeter('Loss')
+    accuracy_meter = AverageMeter('Accuracy')
 
-    for image_batch, logits_batch in tqdm(train_loader):
+    for images, logits in pbar:
         n_iter = np.random.randint(args.n_iter - args.n_iter_range,
                                    args.n_iter + args.n_iter_range + 1)
 
-        logits_batch = logits_batch.cuda()
-        image_batch = image_batch.cuda()
+        logits = logits.cuda()
+        images = images.cuda()
 
-        # logits_batch = dinohash(image_batch, differentiable=False, logits=True, c=1).float().cuda()
-        hash_batch = (logits_batch >= 0).float()
+        # logits = dinohash(images, differentiable=False, logits=True, c=1).float().cuda()
 
-        adv_images, _ = apgd.attack_single_run(image_batch, logits_batch, n_iter, log=False)
+        adv_images, _ = apgd.attack_single_run(images, logits, n_iter, log=False)
 
-        # adv_images = image_batch.cuda()
+        # adv_images = images.cuda()
 
         optimizer.zero_grad()
 
         dinov2.train()
-        adv_hash_batch, loss = criterion_loss(adv_images, logits_batch, loss="target mse", l2_normalize=False)
+        adv_hashes, loss = criterion_loss(adv_images, logits, loss="target bce", l2_normalize=False)
+        if args.clean_weight > 0:
+            clean_loss = criterion_loss(images, logits, loss="target bce", l2_normalize=False)
+            loss = (1 - args.clean_weight) * loss + args.clean_weight * clean_loss
 
         loss = loss.mean()
 
-        accuracy = (adv_hash_batch - hash_batch).abs().mean()
-        print("Attack strength:", accuracy.item())
+        hashes = (logits >= 0).float()
+        accuracy = (adv_hashes - hashes).abs().mean()
+
+        loss_meter.update(loss.item(), len(images))
+        accuracy_meter.update(accuracy.item(), len(images))
+
+        pbar.set_description(f"attack: {accuracy * 100:.4f}, loss: {loss:.4f}")
 
         loss.backward()
         optimizer.step()
-        del hash_batch, logits_batch, image_batch
+        scheduler(step_total)
+        step_total += 1
 
-    dinov2.eval()
+        del hashes, logits, images, adv_images, adv_hashes
 
-    total_strength = 0
-    n_images = 0
+        if step_total % args.val_freq == 0:
+            dinov2.eval()
 
-    for image_batch, logits_batch in tqdm(test_loader):
-        logits_batch = logits_batch.cuda()
-        hash_batch = (logits_batch >= 0).float()
+            total_strength = 0
+            total_accuracy = 0
+            n_images = 0
 
-        adv_images, _ = apgd.attack_single_run(image_batch, hash_batch, 10)
+            for images, logits in test_loader:
+                logits = logits.cuda()
+                hashes = (logits >= 0).float()
 
-        adv_hash_batch = dinohash(adv_images, differentiable=False).float()
-        accuracy = (adv_hash_batch - hash_batch).cpu().abs().mean().item()
+                adv_images, _ = apgd.attack_single_run(images, logits, n_iter=20)
 
-        total_strength += accuracy * len(image_batch)
-        n_images += len(image_batch)
+                adv_hashes = dinohash(adv_images, differentiable=False).float()
+                accuracy = (adv_hashes - hashes).cpu().abs().mean().item()
 
-        del hash_batch, logits_batch
+                clean_hashes = dinohash(images, differentiable=False).float()
+                clean_accuracy = (clean_hashes - hashes).cpu().abs().mean().item()
 
-    print("Validation attack strength:")
-    print(total_strength / n_images)
+                total_strength += accuracy * len(images)
+                total_accuracy += clean_accuracy * len(images)
+                n_images += len(images)
+
+                del hashes, logits
+
+            print(f"validation attack strength: {total_strength / n_images * 100:.2f}, clean error:  {total_accuracy / n_images * 100:.2f}")
+            del adv_images, adv_hashes, images, logits, clean_hashes
+
+    print(f"step: {step_total}, loss: {loss_meter.avg:.4f}, accuracy: {accuracy_meter.avg:.4f}")
+    del loss_meter, accuracy_meter
+
+    del loss_meter, accuracy_meter
