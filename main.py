@@ -23,7 +23,7 @@ class ImageDataset(Dataset):
         return len(self.image_files)
 
     def __getitem__(self, idx):
-        image = Image.open(os.path.join(dataset_folder, self.image_files[idx])).convert("RGB").transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+        image = Image.open(os.path.join(dataset_folder, self.image_files[idx])).convert("RGB")
         if self.transform:
             image = self.transform(image)
         return preprocess(image)
@@ -51,7 +51,7 @@ def generate_roc(matches, bits):
 
 hasher = dinohash
 
-dataset_folder = './adversarial_data/train/adv'
+dataset_folder = './adversarial_dataset/adv'
 image_files = [f for f in os.listdir(dataset_folder)]
 image_files.sort()
 image_files = image_files[:1_000]

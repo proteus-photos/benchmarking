@@ -49,6 +49,7 @@ class ImageDataset(torch.utils.data.Dataset):
         self.mydinov2 = copy.deepcopy(dinov2)
         for param in self.mydinov2.parameters():
             param.requires_grad = False
+        self.mydinov2.eval()
 
         # self.logits = []
         # batchSize = 4096
@@ -92,9 +93,9 @@ parser.add_argument('--epsilon', dest='epsilon', type=float, default=8/255,
                     help='maximum perturbation (L∞ norm bound)')
 parser.add_argument('--n_epochs', dest='n_epochs', type=int, default=1,
                     help='number of epochs')
-parser.add_argument('--lr', dest='lr', type=float, default=1e-5,
+parser.add_argument('--lr', dest='lr', type=float, default=1e-6,
                     help='learning rate')
-parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=1e-4,
+parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=1e-5,
                     help='weight decay')
 parser.add_argument('--warmup', dest='warmup', type=int, default=1_40,
                     help='number of warmup steps')
@@ -102,7 +103,7 @@ parser.add_argument('--steps', dest='steps', type=int, default=20_00,
                     help='number of steps')
 parser.add_argument('--start_step', dest='start_step', type=int, default=0,
                     help='starting step')
-parser.add_argument('--clean_weight', dest='clean_weight', type=float, default=.0,
+parser.add_argument('--clean_weight', dest='clean_weight', type=float, default=10,
                     help='weight of clean loss')
 parser.add_argument('--val_freq', dest='val_freq', type=int, default=50,
                     help='validation frequency')
@@ -112,12 +113,12 @@ os.makedirs('./adversarial_dataset', exist_ok=True)
 
 image_files = [os.path.join(args.image_dir, f) for f in os.listdir(args.image_dir) if os.path.isfile(os.path.join(args.image_dir, f))]
 image_files.sort()
-image_files = image_files[:1_000_000]
-
+image_files = image_files[:50_631]
+# 1_052_631
 dataset = ImageDataset(image_files)
 complete_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
 
-SPLIT_RATIO = 0.8
+SPLIT_RATIO = 0.99
 train_dataset, test_dataset = torch.utils.data.random_split(dataset, [int(SPLIT_RATIO*len(dataset)), len(dataset)-int(SPLIT_RATIO*len(dataset))])
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
@@ -137,6 +138,7 @@ while step_total < args.steps:
     accuracy_meter = AverageMeter('Accuracy')
 
     for images, logits in pbar:
+        scheduler(step_total)
         n_iter = np.random.randint(args.n_iter - args.n_iter_range,
                                    args.n_iter + args.n_iter_range + 1)
 
@@ -149,15 +151,24 @@ while step_total < args.steps:
 
         # adv_images = images.cuda()
 
-        optimizer.zero_grad()
-
         dinov2.train()
-        adv_hashes, loss = criterion_loss(adv_images, logits, loss="target bce", l2_normalize=False)
-        if args.clean_weight > 0:
-            clean_loss = criterion_loss(images, logits, loss="target bce", l2_normalize=False)
-            loss = (1 - args.clean_weight) * loss + args.clean_weight * clean_loss
+        adv_hashes, adv_loss = criterion_loss(adv_images, logits, loss="target bce", l2_normalize=False)
 
-        loss = loss.mean()
+        adv_loss = adv_loss.mean()
+        adv_loss.backward()
+
+        clean_loss = 0
+        if args.clean_weight > 0:
+            clean_hashes, clean_loss = criterion_loss(images, logits, loss="target bce", l2_normalize=False)
+            clean_loss =  args.clean_weight * clean_loss.mean()
+            clean_loss.backward()
+
+        loss = adv_loss + clean_loss
+        adv_loss = adv_loss.item()
+        clean_loss = clean_loss.item() / args.clean_weight
+
+        optimizer.step()
+        optimizer.zero_grad()
 
         hashes = (logits >= 0).float()
         accuracy = (adv_hashes - hashes).abs().mean()
@@ -165,11 +176,8 @@ while step_total < args.steps:
         loss_meter.update(loss.item(), len(images))
         accuracy_meter.update(accuracy.item(), len(images))
 
-        pbar.set_description(f"attack: {accuracy * 100:.4f}, loss: {loss:.4f}")
+        pbar.set_description(f"attack: {accuracy * 100:.4f}, loss: {loss:.4f}, adv_loss: {adv_loss:.4f}, clean_loss: {clean_loss:.4f}")
 
-        loss.backward()
-        optimizer.step()
-        scheduler(step_total)
         step_total += 1
 
         del hashes, logits, images, adv_images, adv_hashes
@@ -187,22 +195,19 @@ while step_total < args.steps:
 
                 adv_images, _ = apgd.attack_single_run(images, logits, n_iter=20)
 
-                adv_hashes = dinohash(adv_images, differentiable=False).float()
+                adv_hashes = dinohash(adv_images).float()
                 accuracy = (adv_hashes - hashes).cpu().abs().mean().item()
 
-                clean_hashes = dinohash(images, differentiable=False).float()
+                clean_hashes = dinohash(images).float()
                 clean_accuracy = (clean_hashes - hashes).cpu().abs().mean().item()
 
                 total_strength += accuracy * len(images)
                 total_accuracy += clean_accuracy * len(images)
                 n_images += len(images)
 
-                del hashes, logits
+                del hashes, logits, adv_images, adv_hashes, images, clean_hashes
 
-            print(f"validation attack strength: {total_strength / n_images * 100:.2f}, clean error:  {total_accuracy / n_images * 100:.2f}")
-            del adv_images, adv_hashes, images, logits, clean_hashes
+            print(f"validation attack strength: {total_strength / n_images * 100:.2f}%, clean error:  {total_accuracy / n_images * 100:.2f}%")
 
     print(f"step: {step_total}, loss: {loss_meter.avg:.4f}, accuracy: {accuracy_meter.avg:.4f}")
-    del loss_meter, accuracy_meter
-
     del loss_meter, accuracy_meter

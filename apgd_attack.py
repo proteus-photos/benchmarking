@@ -38,10 +38,11 @@ def criterion_loss(x, original_logits, loss, l2_normalize=False):
         hash = dinohash(x, differentiable=True, c=10, logits=False, l2_normalize=l2_normalize)
         loss = l1_loss(hash, original_hash, reduction="none").mean(1)
     elif loss=="target bce":
+        SCALE = 10
         logits = dinohash(x, differentiable=True, c=1, logits=True, l2_normalize=l2_normalize)
-        loss = binary_cross_entropy_with_logits(logits.flatten(), torch.sigmoid(original_logits).flatten(), reduction="none")
+        loss = binary_cross_entropy_with_logits(logits.flatten() * SCALE, torch.sigmoid(original_logits * SCALE).flatten(), reduction="none")
         # we unflatten and average the loss (across bits) to have one loss per image       
-        loss = loss.view(x.shape[0], -1).mean(1) * 30
+        loss = loss.view(x.shape[0], -1).mean(1)
         hash = torch.sigmoid(logits)
     elif loss=="target mse":
         logits = dinohash(x, differentiable=True, c=1, logits=True, l2_normalize=l2_normalize)

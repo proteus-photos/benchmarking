@@ -21,6 +21,8 @@ preprocess = transforms.Compose([
     transforms.ToTensor(),
 ])
 
+defense = None
+
 def dinohash(image_arrays, differentiable=False, c=1, logits=False, l2_normalize=True, mydinov2=dinov2):
     # NOTE: differentiable assumes torch.Tensor input
     # NOTE: cpu is only supported for non-differentiable
