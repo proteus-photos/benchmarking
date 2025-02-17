@@ -53,6 +53,9 @@ def criterion_loss(x, original_logits, loss, l2_normalize=False):
     else:
         raise ValueError("loss must be 'mse', 'mae' or 'bce'")
     
+    # print(logits.flatten()[:10])
+    # print(original_logits.flatten()[:10])
+
     hash = (hash > 0.5).float()
     return hash, loss
 

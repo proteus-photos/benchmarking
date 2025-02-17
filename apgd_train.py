@@ -70,7 +70,7 @@ class ImageDataset(torch.utils.data.Dataset):
             images = [preprocess(Image.open(image_file)) for image_file in self.image_files[start:end]]
             images = torch.stack(images)
             logits = dinohash(images, differentiable=False, logits=True,
-                              c=1, mydinov2=self.mydinov2)
+                              c=1, mydinov2=self.mydinov2, l2_normalize=False)
             self.logits[start:end] = logits
             self.computed[start:end] = True
         image_file = self.image_files[idx]
@@ -81,7 +81,7 @@ class ImageDataset(torch.utils.data.Dataset):
 # Parse command-line arguments
 parser = argparse.ArgumentParser(
     description='Perform neural collision attack.')
-parser.add_argument('--batch_size', dest='batch_size', type=int, default=256,
+parser.add_argument('--batch_size', dest='batch_size', type=int, default=200,
                     help='batch size for processing images')
 parser.add_argument('--image_dir', dest='image_dir', type=str,
                     default='./diffusion_data', help='directory containing images')
@@ -93,19 +93,19 @@ parser.add_argument('--epsilon', dest='epsilon', type=float, default=8/255,
                     help='maximum perturbation (L∞ norm bound)')
 parser.add_argument('--n_epochs', dest='n_epochs', type=int, default=1,
                     help='number of epochs')
-parser.add_argument('--lr', dest='lr', type=float, default=1e-6,
+parser.add_argument('--lr', dest='lr', type=float, default=1e-4,
                     help='learning rate')
-parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=1e-5,
+parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=1e-4,
                     help='weight decay')
-parser.add_argument('--warmup', dest='warmup', type=int, default=1_40,
+parser.add_argument('--warmup', dest='warmup', type=int, default=1_400,
                     help='number of warmup steps')
-parser.add_argument('--steps', dest='steps', type=int, default=20_00,
+parser.add_argument('--steps', dest='steps', type=int, default=20_000,
                     help='number of steps')
 parser.add_argument('--start_step', dest='start_step', type=int, default=0,
                     help='starting step')
-parser.add_argument('--clean_weight', dest='clean_weight', type=float, default=10,
+parser.add_argument('--clean_weight', dest='clean_weight', type=float, default=500,
                     help='weight of clean loss')
-parser.add_argument('--val_freq', dest='val_freq', type=int, default=50,
+parser.add_argument('--val_freq', dest='val_freq', type=int, default=1_000,
                     help='validation frequency')
 
 args = parser.parse_args()
@@ -113,12 +113,12 @@ os.makedirs('./adversarial_dataset', exist_ok=True)
 
 image_files = [os.path.join(args.image_dir, f) for f in os.listdir(args.image_dir) if os.path.isfile(os.path.join(args.image_dir, f))]
 image_files.sort()
-image_files = image_files[:50_631]
+image_files = image_files[:1_001_001]
 # 1_052_631
 dataset = ImageDataset(image_files)
 complete_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
 
-SPLIT_RATIO = 0.99
+SPLIT_RATIO = 0.999
 train_dataset, test_dataset = torch.utils.data.random_split(dataset, [int(SPLIT_RATIO*len(dataset)), len(dataset)-int(SPLIT_RATIO*len(dataset))])
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)

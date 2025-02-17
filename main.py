@@ -9,10 +9,11 @@ import pandas as pd
 from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import functional as F
 
+from apgd_attack import APGDAttack
 from inr import INR
 from transformer import Transformer
 from database import Database
-from hashes.dinohash import dinohash, preprocess
+from hashes.dinohash import dinohash, preprocess, set_defense
 
 class ImageDataset(Dataset):
     def __init__(self, image_files, transform=None):
@@ -25,8 +26,10 @@ class ImageDataset(Dataset):
     def __getitem__(self, idx):
         image = Image.open(os.path.join(dataset_folder, self.image_files[idx])).convert("RGB")
         if self.transform:
-            image = self.transform(image)
-        return preprocess(image)
+            transformed_image = self.transform(image)
+        else:
+            transformed_image = image
+        return preprocess(image), preprocess(transformed_image)
 
 def combined_transform(image):
     transformations = []
@@ -51,13 +54,13 @@ def generate_roc(matches, bits):
 
 hasher = dinohash
 
-dataset_folder = './adversarial_dataset/adv'
+dataset_folder = './diffusion_data'
 image_files = [f for f in os.listdir(dataset_folder)]
 image_files.sort()
-image_files = image_files[:1_000]
+image_files = image_files[:1_00]
 
-BATCH_SIZE = 128
-N_IMAGE_RETRIEVAL = 1
+BATCH_SIZE = 4
+# N_IMAGE_RETRIEVAL = 1
 
 parser = argparse.ArgumentParser(description ='Perform retrieval benchmarking.')
 parser.add_argument('-r', '--refresh', action='store_true')
@@ -74,7 +77,9 @@ dataset = ImageDataset(image_files, transform=combined_transform)
 dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4)
 
 if args.defense:
-    defense = INR(device='cuda', pretrain_inr_path=args.defense)
+    disco_defense = INR(device='cuda', pretrain_inr_path=args.defense)
+    disco_defense = BPDAWrapper(disco_defense, forwardsub=lambda x: x)
+    apgd = APGDAttack(eps=8/255)
 
 os.makedirs("databases", exist_ok=True)
 if hasher.__name__ + ".npy" not in os.listdir("databases") or args.refresh:
@@ -93,10 +98,19 @@ else:
 print(f"Computing bit accuracy for {transformation} + {hasher.__name__}...")
 modified_hashes = []
 
-for transformed_images in tqdm(dataloader):
-    transformed_images = transformed_images.cuda()
+for images, transformed_images in tqdm(dataloader):
+    # copy = transformed_images.detach().clone()
     if args.defense:
-        transformed_images = defense.forward(transformed_images)
+        set_defense(None)
+        original_logits = hasher(images, logits=True)
+        k = np.random.randint(1, 6)
+        set_defense(disco_defense, k=k)
+        transformed_images, _ = apgd.attack_single_run(transformed_images, original_logits, n_iter=50)
+        
+    # diff = (copy - transformed_images).abs().mean()
+    k = np.random.randint(1, 6)
+    set_defense(disco_defense, k=k)
+
     modified_hashes_batch = hasher(transformed_images).tolist()
     modified_hashes.extend(modified_hashes_batch)
 
