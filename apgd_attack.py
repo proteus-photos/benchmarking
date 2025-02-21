@@ -63,7 +63,7 @@ def criterion_loss(x, original_logits, loss, l2_normalize=False):
 def hash_loss_grad(x, original_logits, loss="bce"):
     x.requires_grad = True
     
-    hash, loss = criterion_loss(x, original_logits, loss=loss, l2_normalize=True)
+    hash, loss = criterion_loss(x, original_logits, loss=loss)
 
     # contains overall sum of loss for batch, we dont use mean
     loss_sum = loss.sum()

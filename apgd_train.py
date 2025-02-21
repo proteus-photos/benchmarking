@@ -8,7 +8,7 @@ from tqdm import tqdm
 import copy
 
 import numpy as np
-from hashes.dinohash import preprocess, normalize, dinov2, dinohash
+from hashes.dinohash import preprocess, normalize, dinov2, dinohash, load_model
 import torch
 from apgd_attack import APGDAttack, criterion_loss
 from utils import AverageMeter
@@ -70,7 +70,7 @@ class ImageDataset(torch.utils.data.Dataset):
             images = [preprocess(Image.open(image_file)) for image_file in self.image_files[start:end]]
             images = torch.stack(images)
             logits = dinohash(images, differentiable=False, logits=True,
-                              c=1, mydinov2=self.mydinov2, l2_normalize=False)
+                              c=1, mydinov2=self.mydinov2)
             self.logits[start:end] = logits
             self.computed[start:end] = True
         image_file = self.image_files[idx]
@@ -93,7 +93,7 @@ parser.add_argument('--epsilon', dest='epsilon', type=float, default=8/255,
                     help='maximum perturbation (L∞ norm bound)')
 parser.add_argument('--n_epochs', dest='n_epochs', type=int, default=1,
                     help='number of epochs')
-parser.add_argument('--lr', dest='lr', type=float, default=1e-4,
+parser.add_argument('--lr', dest='lr', type=float, default=1e-5,
                     help='learning rate')
 parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=1e-4,
                     help='weight decay')
@@ -107,23 +107,29 @@ parser.add_argument('--clean_weight', dest='clean_weight', type=float, default=5
                     help='weight of clean loss')
 parser.add_argument('--val_freq', dest='val_freq', type=int, default=1_000,
                     help='validation frequency')
+parser.add_argument('--resume_path', dest='resume_path', type=str, default=None,
+                    help='resume path')
 
 args = parser.parse_args()
 os.makedirs('./adversarial_dataset', exist_ok=True)
 
 image_files = [os.path.join(args.image_dir, f) for f in os.listdir(args.image_dir) if os.path.isfile(os.path.join(args.image_dir, f))]
 image_files.sort()
-image_files = image_files[:1_001_001]
-# 1_052_631
+image_files = image_files[:1_800_000]
+
 dataset = ImageDataset(image_files)
 complete_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
 
-SPLIT_RATIO = 0.999
+SPLIT_RATIO = 0.9995
 train_dataset, test_dataset = torch.utils.data.random_split(dataset, [int(SPLIT_RATIO*len(dataset)), len(dataset)-int(SPLIT_RATIO*len(dataset))])
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
 apgd = APGDAttack(eps=args.epsilon)
+
+if args.resume_path is not None:
+    load_model(args.resume_path)
+
 optimizer = AdamW(dinov2.parameters(), lr=args.lr, weight_decay=args.weight_decay, betas=(0.9, 0.95))
 scheduler = cosine_lr(optimizer, args.lr, args.warmup, args.steps)
 step_total = args.start_step
@@ -152,20 +158,24 @@ while step_total < args.steps:
         # adv_images = images.cuda()
 
         dinov2.train()
-        adv_hashes, adv_loss = criterion_loss(adv_images, logits, loss="target bce", l2_normalize=False)
+        adv_hashes, adv_loss = criterion_loss(adv_images, logits, loss="target bce")
 
         adv_loss = adv_loss.mean()
         adv_loss.backward()
 
         clean_loss = 0
         if args.clean_weight > 0:
-            clean_hashes, clean_loss = criterion_loss(images, logits, loss="target bce", l2_normalize=False)
+            clean_hashes, clean_loss = criterion_loss(images, logits, loss="target bce")
             clean_loss =  args.clean_weight * clean_loss.mean()
             clean_loss.backward()
 
         loss = adv_loss + clean_loss
         adv_loss = adv_loss.item()
-        clean_loss = clean_loss.item() / args.clean_weight
+
+        if args.clean_weight > 0:
+            clean_loss = clean_loss.item() / args.clean_weight
+        else:
+            clean_loss = 0
 
         optimizer.step()
         optimizer.zero_grad()
@@ -210,4 +220,6 @@ while step_total < args.steps:
             print(f"validation attack strength: {total_strength / n_images * 100:.2f}%, clean error:  {total_accuracy / n_images * 100:.2f}%")
 
     print(f"step: {step_total}, loss: {loss_meter.avg:.4f}, accuracy: {accuracy_meter.avg:.4f}")
+    torch.save(dinov2.state_dict(), f'./dinov2_{args.lr}_{args.clean_weight}_{step_total}_{args.n_iter}.pth')
+
     del loss_meter, accuracy_meter

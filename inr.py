@@ -1,9 +1,10 @@
 import torch
+import torch.nn as nn
 from models import make, make_coord
 
-
-class INR(object):
+class INR(nn.Module):
     def __init__(self, device, pretrain_inr_path, height=224, width=224):
+        super().__init__()
         self.device = device
         self.inr_model = make(torch.load(pretrain_inr_path)['model'], load_sd=True).to(self.device)
         
@@ -36,25 +37,16 @@ class INR(object):
         pred = torch.cat(preds, dim=1)
         return pred
 
-    def forward(self, x, grads=False):
+    def forward(self, x):
         
         lst_img = []
         for img in x:
             img_tensor = img.unsqueeze(0)
-            if grads:
-                with torch.enable_grad():
-                    inr_output = self.batched_predict(((img_tensor - 0.5) / 0.5), self.coord.unsqueeze(0),
-                                                        self.cell.unsqueeze(0), bsize=30_000)[0]
-            else:
-                with torch.no_grad():
-                    inr_output = self.batched_predict(((img_tensor - 0.5) / 0.5), self.coord.unsqueeze(0),
-                                                            self.cell.unsqueeze(0), bsize=30_000)[0]
+            inr_output = self.batched_predict(((img_tensor - 0.5) / 0.5), self.coord.unsqueeze(0),
+                                                self.cell.unsqueeze(0), bsize=30_000)[0]
+
             
             inr_output = (inr_output * 0.5 + 0.5).clamp(0, 1).view(self.height, self.width, 3).permute(2, 0, 1)
             lst_img.append(inr_output)
         
-        stack = torch.stack(lst_img)
-        if grads:
-            return stack
-        else:
-            return stack.detach().clone()
+        return torch.stack(lst_img)

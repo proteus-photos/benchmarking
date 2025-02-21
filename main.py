@@ -8,12 +8,13 @@ from scipy.stats import binom
 import pandas as pd
 from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import functional as F
+from advertorch.bpda import BPDAWrapper
 
 from apgd_attack import APGDAttack
 from inr import INR
 from transformer import Transformer
 from database import Database
-from hashes.dinohash import dinohash, preprocess, set_defense
+from hashes.dinohash import dinohash, preprocess, set_defense, dinov2, load_model
 
 class ImageDataset(Dataset):
     def __init__(self, image_files, transform=None):
@@ -25,14 +26,14 @@ class ImageDataset(Dataset):
 
     def __getitem__(self, idx):
         image = Image.open(os.path.join(dataset_folder, self.image_files[idx])).convert("RGB")
-        if self.transform:
+        if self.transform is not None:
             transformed_image = self.transform(image)
+            return preprocess(image), preprocess(transformed_image)
         else:
-            transformed_image = image
-        return preprocess(image), preprocess(transformed_image)
+            return preprocess(image)
 
 def combined_transform(image):
-    transformations = []
+    transformations = ["screenshot", transformation, "erase", "text"]
     for transform in transformations:
         image = t.transform(image, method=transform)
     return image
@@ -57,15 +58,17 @@ hasher = dinohash
 dataset_folder = './diffusion_data'
 image_files = [f for f in os.listdir(dataset_folder)]
 image_files.sort()
-image_files = image_files[:1_00]
+image_files = image_files[:100_000]
 
-BATCH_SIZE = 4
+BATCH_SIZE = 256
 # N_IMAGE_RETRIEVAL = 1
 
 parser = argparse.ArgumentParser(description ='Perform retrieval benchmarking.')
 parser.add_argument('-r', '--refresh', action='store_true')
 parser.add_argument('--defense', dest='defense', type=str, default=None,
                     help='path to defense model')
+parser.add_argument('--checkpoint', dest='checkpoint', type=str, default=None,
+                    help='path to checkpoint')
 
 parser.add_argument('--transform')
 args = parser.parse_args()
@@ -73,8 +76,8 @@ args = parser.parse_args()
 transformation = args.transform
 t = Transformer()
 
-dataset = ImageDataset(image_files, transform=combined_transform)
-dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4)
+if args.checkpoint is not None:
+    load_model(args.checkpoint)
 
 if args.defense:
     disco_defense = INR(device='cuda', pretrain_inr_path=args.defense)
@@ -85,7 +88,9 @@ os.makedirs("databases", exist_ok=True)
 if hasher.__name__ + ".npy" not in os.listdir("databases") or args.refresh:
     print("Creating database for", hasher.__name__)
     original_hashes = []
-    image_file_batches = (image_files[i:i+BATCH_SIZE] for i in range(0, len(image_files), BATCH_SIZE))
+
+    dataset = ImageDataset(image_files, transform=None)
+    dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=11)
 
     for image_batch in tqdm(dataloader):
         original_hashes.extend(hasher(image_batch).cpu())
@@ -97,19 +102,20 @@ else:
 
 print(f"Computing bit accuracy for {transformation} + {hasher.__name__}...")
 modified_hashes = []
+dataset = ImageDataset(image_files, transform=combined_transform)
+dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=11)
 
 for images, transformed_images in tqdm(dataloader):
     # copy = transformed_images.detach().clone()
     if args.defense:
         set_defense(None)
         original_logits = hasher(images, logits=True)
-        k = np.random.randint(1, 6)
+        k = 2 #np.random.randint(1, 6)
         set_defense(disco_defense, k=k)
         transformed_images, _ = apgd.attack_single_run(transformed_images, original_logits, n_iter=50)
-        
-    # diff = (copy - transformed_images).abs().mean()
-    k = np.random.randint(1, 6)
-    set_defense(disco_defense, k=k)
+    
+    # k = np.random.randint(1, 6)
+    # set_defense(disco_defense, k=k)
 
     modified_hashes_batch = hasher(transformed_images).tolist()
     modified_hashes.extend(modified_hashes_batch)

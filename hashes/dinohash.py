@@ -6,7 +6,15 @@ def set_defense(defense_module, k=1):
     global defense, K
     K = k
     defense = defense_module
-    
+
+def set_differentiable(grad):
+    global differentiable
+    differentiable = grad
+
+def load_model(path):
+    global dinov2
+    dinov2.load_state_dict(torch.load(path, weights_only=True))
+
 model = "vits14_reg"
 # Load model
 dinov2 = torch.hub.load('facebookresearch/dinov2', f'dinov2_{model}').cuda().eval()
@@ -30,7 +38,7 @@ preprocess = transforms.Compose([
 defense = None
 K=1
 
-def dinohash(image_arrays, differentiable=False, c=1, logits=False, l2_normalize=True, mydinov2=dinov2):
+def dinohash(image_arrays, differentiable=False, c=1, logits=False, l2_normalize=False, mydinov2=dinov2):
     # NOTE: differentiable assumes torch.Tensor input
     # NOTE: cpu is only supported for non-differentiable
     
@@ -42,7 +50,7 @@ def dinohash(image_arrays, differentiable=False, c=1, logits=False, l2_normalize
         image_arrays = image_arrays.cuda()
         if defense is not None:
             for _ in range(K):
-                image_arrays = defense.forward(image_arrays, grads=differentiable)
+                image_arrays = defense.forward(image_arrays)
 
         image_arrays = normalize(image_arrays)
         
