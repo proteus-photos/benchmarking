@@ -34,6 +34,10 @@ class ImageDataset(Dataset):
 
 def combined_transform(image):
     transformations = ["screenshot", transformation, "erase", "text"]
+
+    if args.attack:
+        transformations = []
+
     for transform in transformations:
         image = t.transform(image, method=transform)
     return image
@@ -69,6 +73,7 @@ parser.add_argument('--defense', dest='defense', type=str, default=None,
                     help='path to defense model')
 parser.add_argument('--checkpoint', dest='checkpoint', type=str, default=None,
                     help='path to checkpoint')
+parser.add_argument('--attack', action='store_true')
 
 parser.add_argument('--transform')
 args = parser.parse_args()
@@ -82,7 +87,10 @@ if args.checkpoint is not None:
 if args.defense:
     disco_defense = INR(device='cuda', pretrain_inr_path=args.defense)
     disco_defense = BPDAWrapper(disco_defense, forwardsub=lambda x: x)
+
+if args.attack:
     apgd = APGDAttack(eps=8/255)
+    print("Not applying any transformations since attack is enabled.")
 
 os.makedirs("databases", exist_ok=True)
 if hasher.__name__ + ".npy" not in os.listdir("databases") or args.refresh:
@@ -107,15 +115,20 @@ dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False, num_worke
 
 for images, transformed_images in tqdm(dataloader):
     # copy = transformed_images.detach().clone()
-    if args.defense:
+    if args.attack:
         set_defense(None)
         original_logits = hasher(images, logits=True)
+    
+    if args.defense:
         k = 2 #np.random.randint(1, 6)
         set_defense(disco_defense, k=k)
-        transformed_images, _ = apgd.attack_single_run(transformed_images, original_logits, n_iter=50)
     
-    # k = np.random.randint(1, 6)
-    # set_defense(disco_defense, k=k)
+    if args.attack:
+        transformed_images, _ = apgd.attack_single_run(transformed_images, original_logits, n_iter=50)
+
+        # we technically don't need to do this but
+        # it deflects a bit of the attack by rounding off the pixels 
+        pil_images = [F.to_pil_image(image) for image in transformed_images]
 
     modified_hashes_batch = hasher(transformed_images).tolist()
     modified_hashes.extend(modified_hashes_batch)

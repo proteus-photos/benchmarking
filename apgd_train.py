@@ -42,9 +42,9 @@ def cosine_lr(optimizer, base_lrs, warmup_length, steps):
 class ImageDataset(torch.utils.data.Dataset):
     def __init__(self, image_files):
         self.image_files = image_files
-        self.computed = torch.zeros(len(image_files), dtype=torch.bool)
-        self.logits = torch.zeros(len(image_files), BITS)
-        self.batch_size = 16
+        # self.computed = torch.zeros(len(image_files), dtype=torch.bool)
+        # self.logits = torch.zeros(len(image_files), BITS)
+        # self.batch_size = 16
 
         self.mydinov2 = copy.deepcopy(dinov2)
         for param in self.mydinov2.parameters():
@@ -64,19 +64,19 @@ class ImageDataset(torch.utils.data.Dataset):
         return len(self.image_files)
 
     def __getitem__(self, idx):
-        if not self.computed[idx]:
-            start = (idx // self.batch_size) * self.batch_size
-            end = min(start + self.batch_size, len(self.image_files))
-            images = [preprocess(Image.open(image_file)) for image_file in self.image_files[start:end]]
-            images = torch.stack(images)
-            logits = dinohash(images, differentiable=False, logits=True,
-                              c=1, mydinov2=self.mydinov2)
-            self.logits[start:end] = logits
-            self.computed[start:end] = True
+        # if not self.computed[idx]:
+        #     start = (idx // self.batch_size) * self.batch_size
+        #     end = min(start + self.batch_size, len(self.image_files))
+        #     images = [preprocess(Image.open(image_file)) for image_file in self.image_files[start:end]]
+        #     images = torch.stack(images)
+        #     logits = dinohash(images, differentiable=False, logits=True,
+        #                       c=1, mydinov2=self.mydinov2)
+        #     self.logits[start:end] = logits
+        #     self.computed[start:end] = True
         image_file = self.image_files[idx]
         image = preprocess(Image.open(image_file))
 
-        return image, self.logits[idx]
+        return image
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(
@@ -105,7 +105,7 @@ parser.add_argument('--start_step', dest='start_step', type=int, default=0,
                     help='starting step')
 parser.add_argument('--clean_weight', dest='clean_weight', type=float, default=500,
                     help='weight of clean loss')
-parser.add_argument('--val_freq', dest='val_freq', type=int, default=1_000,
+parser.add_argument('--val_freq', dest='val_freq', type=int, default=1_00,
                     help='validation frequency')
 parser.add_argument('--resume_path', dest='resume_path', type=str, default=None,
                     help='resume path')
@@ -118,12 +118,13 @@ image_files.sort()
 image_files = image_files[:1_800_000]
 
 dataset = ImageDataset(image_files)
+clean_dinov2 = dataset.mydinov2
 complete_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
 
 SPLIT_RATIO = 0.9995
 train_dataset, test_dataset = torch.utils.data.random_split(dataset, [int(SPLIT_RATIO*len(dataset)), len(dataset)-int(SPLIT_RATIO*len(dataset))])
-train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=11)
+test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=11)
 
 apgd = APGDAttack(eps=args.epsilon)
 
@@ -143,7 +144,9 @@ while step_total < args.steps:
     loss_meter = AverageMeter('Loss')
     accuracy_meter = AverageMeter('Accuracy')
 
-    for images, logits in pbar:
+    for images in pbar:
+        logits = dinohash(images, differentiable=False, logits=True, mydinov2=clean_dinov2).float().cuda()
+
         scheduler(step_total)
         n_iter = np.random.randint(args.n_iter - args.n_iter_range,
                                    args.n_iter + args.n_iter_range + 1)
@@ -199,8 +202,8 @@ while step_total < args.steps:
             total_accuracy = 0
             n_images = 0
 
-            for images, logits in test_loader:
-                logits = logits.cuda()
+            for images in test_loader:
+                logits = dinohash(images, differentiable=False, logits=True, mydinov2=clean_dinov2).float().cuda()
                 hashes = (logits >= 0).float()
 
                 adv_images, _ = apgd.attack_single_run(images, logits, n_iter=20)

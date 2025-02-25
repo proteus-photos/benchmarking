@@ -4,10 +4,10 @@ import numpy as np
 from PIL import Image
 from transformer import Transformer
 
-t = Transformer()
-image = Image.open("test.jpg")
-image = t.transform(t.transform(image, "screenshot"), "blur")
-image.save("test_transformed.jpg")
+# t = Transformer()
+# image = Image.open("test.jpg")
+# image = t.transform(t.transform(image, "screenshot"), "blur")
+# image.save("test_transformed.jpg")
 
 transformations = "Blur", "Brightness", "Contrast", "Median"
 methods = "DinoHash", "NeuralHash", "Stable Signature"
@@ -45,4 +45,5 @@ ax.legend(loc=0)
 ax2.legend(loc=4)
 
 # plt.legend()
+plt.tight_layout()
 plt.savefig(f"./results/multi.png")
